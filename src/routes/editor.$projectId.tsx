@@ -2,103 +2,191 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import previewFrame from "@/assets/preview-frame.jpg";
 import {
-  Play, Pause, SkipBack, SkipForward, Scissors, Magnet, Maximize2,
-  Volume2, Wand2, Sparkles, Mic, Music2, Captions, Plus, Lock,
-  Eye, ChevronLeft, Settings, Layers, Film, Folder, ZoomIn, ZoomOut,
+  Play, Pause, SkipBack, SkipForward, Scissors, Wand2, Sparkles,
+  Mic, Music2, Captions, ChevronLeft, ChevronDown, X, ArrowLeft,
+  Layers, Type, Image as ImageIcon, AudioLines, Film, Library,
+  Sliders, Download, Lock, Eye, Volume2, Magnet, Maximize2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/editor/$projectId")({
   head: () => ({
     meta: [
       { title: "MotScri — Editor" },
-      { name: "description", content: "Tactile mobile NLE workspace." },
+      { name: "description", content: "5-zone tactile workspace with on-device AI agent." },
     ],
   }),
   component: EditorPage,
 });
 
-type Deck = "edit" | "vfx" | "audio" | "ai" | "export";
+type Deck =
+  | "default"
+  | "media"
+  | "text"
+  | "audio"
+  | "effects"
+  | "transitions"
+  | "ai"
+  | "agent";
 
 function EditorPage() {
   const { projectId } = useParams({ from: "/editor/$projectId" });
-  const [deck, setDeck] = useState<Deck>("edit");
+  const [deck, setDeck] = useState<Deck>("default");
   const [playing, setPlaying] = useState(false);
+  const [time, setTime] = useState(252);
   const [selectedClip, setSelectedClip] = useState<string | null>("v1-2");
-  const [time, setTime] = useState(252); // seconds
+  const [aspect, setAspect] = useState("16:9");
+  const [agentOpen, setAgentOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   return (
-    <div className="flex flex-col min-h-[100dvh] w-full max-w-md mx-auto bg-background text-foreground">
-      <TopBar projectId={projectId} />
-      <Viewport playing={playing} />
+    <div className="relative flex flex-col h-[100dvh] w-full max-w-md mx-auto overflow-hidden text-foreground">
+      <Zone1Header
+        projectId={projectId}
+        aspect={aspect}
+        setAspect={setAspect}
+        onExport={() => setExportOpen(true)}
+      />
+
+      <Zone2Viewport playing={playing} aspect={aspect} time={time} />
+
       <Transport
         playing={playing}
         onToggle={() => setPlaying((p) => !p)}
         time={time}
         onSeek={setTime}
       />
-      <Timeline selected={selectedClip} onSelect={setSelectedClip} />
-      <ControlDeck deck={deck} setDeck={setDeck} selectedClip={selectedClip} />
-      <div className="h-14" />
-      <EditorBottomNav />
+
+      <Zone3Ruler time={time} />
+
+      <Zone4Canvas selected={selectedClip} onSelect={setSelectedClip} />
+
+      {/* Zone 4 / Zone 5 seam — AI Agent anchor lives here */}
+      <div className="relative shrink-0">
+        <Zone5Deck
+          deck={deck}
+          setDeck={setDeck}
+          selectedClip={selectedClip}
+          onEscape={() => {
+            setDeck("default");
+            setSelectedClip(null);
+          }}
+        />
+        <AgentAnchor open={agentOpen} setOpen={setAgentOpen} />
+      </div>
+
+      {exportOpen && <ExportTerminal onClose={() => setExportOpen(false)} />}
     </div>
   );
 }
 
-function TopBar({ projectId }: { projectId: string }) {
-  const name = projectId === "new" ? "Untitled_001" : projectId.replace(/-/g, "_");
+/* ─────────────────────────── ZONE 1 ─────────────────────────── */
+
+function Zone1Header({
+  projectId, aspect, setAspect, onExport,
+}: {
+  projectId: string;
+  aspect: string;
+  setAspect: (s: string) => void;
+  onExport: () => void;
+}) {
+  const name = projectId === "new" ? "Untitled · 001" : projectId.replace(/-/g, " · ");
+  const [open, setOpen] = useState(false);
+  const aspects = ["16:9", "9:16", "1:1", "4:5", "21:9"];
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-3 h-11 border-b border-border bg-panel/95 backdrop-blur">
-      <Link to="/" className="size-8 -ml-1 grid place-items-center text-muted-foreground active:bg-panel-elevated rounded-md">
-        <ChevronLeft className="size-4" />
-      </Link>
-      <div className="flex flex-col items-center leading-none">
-        <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Project</span>
-        <span className="text-[11px] font-semibold text-foreground/90">{name}</span>
+    <header className="relative z-30 px-3 pt-3 pb-2 shrink-0">
+      <div className="glass-strong rounded-2xl h-12 px-2 flex items-center justify-between gap-2">
+        <Link
+          to="/"
+          className="size-9 grid place-items-center rounded-xl text-primary active:bg-primary/5"
+        >
+          <ChevronLeft className="size-4" />
+        </Link>
+
+        <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="h-7 px-2.5 rounded-full bg-primary text-on-primary text-[10px] font-mono font-semibold flex items-center gap-1.5"
+          >
+            {aspect}
+            <ChevronDown className="size-3" />
+          </button>
+          <div className="leading-tight text-center min-w-0">
+            <div className="font-display text-[12px] font-semibold text-primary truncate capitalize">{name}</div>
+            <div className="text-[8.5px] font-mono text-on-surface-variant uppercase tracking-wider flex items-center justify-center gap-1">
+              <span className="size-1 rounded-full bg-lime" /> saved · 2s
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={onExport}
+          className="h-9 px-3.5 rounded-xl bg-primary text-on-primary text-[10.5px] font-mono font-semibold tracking-wider flex items-center gap-1.5 shadow-[var(--shadow-glass)]"
+        >
+          <Download className="size-3.5" /> EXPORT
+        </button>
       </div>
-      <button className="text-[10px] font-bold tracking-wider px-3 py-1.5 rounded-md bg-foreground text-background active:bg-foreground/80">
-        EXPORT
-      </button>
+
+      {open && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-[58px] glass-strong rounded-2xl p-2 grid grid-cols-5 gap-1 z-40">
+          {aspects.map((a) => (
+            <button
+              key={a}
+              onClick={() => { setAspect(a); setOpen(false); }}
+              className={`h-8 w-12 rounded-lg text-[10px] font-mono font-semibold ${
+                a === aspect ? "bg-primary text-on-primary" : "text-primary hover:bg-primary/5"
+              }`}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+      )}
     </header>
   );
 }
 
-function Viewport({ playing }: { playing: boolean }) {
+/* ─────────────────────────── ZONE 2 ─────────────────────────── */
+
+function Zone2Viewport({ playing, aspect, time }: { playing: boolean; aspect: string; time: number }) {
+  const ratio = aspectRatio(aspect);
   return (
-    <section className="relative bg-black shrink-0">
-      <div className="relative w-full aspect-video">
-        <img
-          src={previewFrame}
-          alt="Preview"
-          className="w-full h-full object-cover opacity-95"
-          width={1088}
-          height={608}
-        />
-        <div className="absolute inset-6 border border-accent/50 pointer-events-none">
-          {[
-            "top-0 left-0 border-t-2 border-l-2",
-            "top-0 right-0 border-t-2 border-r-2",
-            "bottom-0 left-0 border-b-2 border-l-2",
-            "bottom-0 right-0 border-b-2 border-r-2",
-          ].map((c) => (
-            <div key={c} className={`absolute ${c} size-2.5 border-accent`} />
-          ))}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-2 rounded-full bg-accent shadow-[0_0_10px_var(--color-accent)]" />
-        </div>
-        <div className="absolute top-3 left-3 px-2 py-1 rounded-md bg-black/55 backdrop-blur-md border border-white/5">
-          <span className="font-mono text-[10px] tracking-tight text-foreground/90 tabular">00:04:12:18</span>
-        </div>
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/55 backdrop-blur-md border border-white/5">
-          {playing && <span className="size-1.5 rounded-full bg-rec animate-pulse" />}
-          <span className="font-mono text-[10px] text-foreground/80">4K · 23.98</span>
-        </div>
-        <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded bg-black/55 border border-white/5">
-          <span className="font-mono text-[9px] tracking-tight text-accent">H.265 · HW</span>
-        </div>
-        <div className="absolute bottom-3 right-3 h-10 w-20 rounded bg-black/55 border border-white/5 p-1 backdrop-blur-md">
-          <div className="h-full w-full flex items-end gap-[1.5px]">
-            {[3, 6, 4, 8, 5, 9, 7, 5, 6, 4, 7, 8, 5, 3].map((h, i) => (
-              <div key={i} className="flex-1 bg-accent/70" style={{ height: `${h * 10}%` }} />
+    <section className="px-3 shrink-0">
+      <div className="relative glass-strong rounded-2xl p-2 overflow-hidden">
+        <div
+          className="relative w-full rounded-xl overflow-hidden bg-primary"
+          style={{ aspectRatio: ratio }}
+        >
+          <img src={previewFrame} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-primary/30" />
+
+          {/* Selection frame */}
+          <div className="absolute inset-5 border border-lime/60 rounded-md pointer-events-none">
+            {[
+              "top-0 left-0 -translate-x-1 -translate-y-1",
+              "top-0 right-0 translate-x-1 -translate-y-1",
+              "bottom-0 left-0 -translate-x-1 translate-y-1",
+              "bottom-0 right-0 translate-x-1 translate-y-1",
+            ].map((c) => (
+              <div key={c} className={`absolute ${c} size-2 rounded-sm bg-lime shadow-[var(--shadow-lime)]`} />
             ))}
+          </div>
+
+          {/* Status badges */}
+          <div className="absolute top-3 left-3 flex items-center gap-1.5">
+            <span className="glass-dark rounded-full px-2.5 py-1 font-mono text-[9.5px] text-lime tabular">
+              {fmt(time)}
+            </span>
+            {playing && (
+              <span className="glass-dark rounded-full px-2 py-1 font-mono text-[9px] text-lime flex items-center gap-1">
+                <span className="size-1.5 rounded-full bg-lime animate-pulse" /> LIVE
+              </span>
+            )}
+          </div>
+          <div className="absolute top-3 right-3 glass-dark rounded-full px-2.5 py-1 font-mono text-[9.5px] text-lime/90">
+            {aspect} · MOtISCEI
+          </div>
+          <div className="absolute bottom-3 left-3 glass-dark rounded-full px-2.5 py-1 font-mono text-[9px] text-lime/90">
+            H.265 · HW · NNAPI
           </div>
         </div>
       </div>
@@ -106,128 +194,145 @@ function Viewport({ playing }: { playing: boolean }) {
   );
 }
 
+function aspectRatio(a: string) {
+  const [w, h] = a.split(":").map(Number);
+  return `${w} / ${h}`;
+}
+
+/* ─────────────────────────── Transport ─────────────────────────── */
+
 function Transport({
   playing, onToggle, time, onSeek,
 }: { playing: boolean; onToggle: () => void; time: number; onSeek: (n: number) => void }) {
   const total = 417;
-  const pct = (time / total) * 100;
   return (
-    <div className="bg-panel border-b border-border shrink-0">
-      <div className="flex items-center justify-between px-4 h-12">
-        <div className="flex items-center gap-2">
-          <TransportBtn onClick={() => onSeek(Math.max(0, time - 5))}><SkipBack className="size-4" /></TransportBtn>
-          <button
-            onClick={onToggle}
-            className="size-9 rounded-full bg-foreground text-background grid place-items-center active:scale-95 transition-transform shadow-lg"
-          >
-            {playing ? <Pause className="size-4" /> : <Play className="size-4 translate-x-0.5" />}
-          </button>
-          <TransportBtn onClick={() => onSeek(Math.min(total, time + 5))}><SkipForward className="size-4" /></TransportBtn>
+    <div className="px-3 pt-2 shrink-0">
+      <div className="glass rounded-2xl h-12 px-3 flex items-center gap-3">
+        <button
+          onClick={() => onSeek(Math.max(0, time - 5))}
+          className="size-8 grid place-items-center rounded-full text-primary active:bg-primary/5"
+        >
+          <SkipBack className="size-4" />
+        </button>
+        <button
+          onClick={onToggle}
+          className="size-10 rounded-full bg-primary text-on-primary grid place-items-center shadow-[var(--shadow-glass-lg)] active:scale-95 transition-transform"
+        >
+          {playing ? <Pause className="size-4" /> : <Play className="size-4 translate-x-0.5" />}
+        </button>
+        <button
+          onClick={() => onSeek(Math.min(total, time + 5))}
+          className="size-8 grid place-items-center rounded-full text-primary active:bg-primary/5"
+        >
+          <SkipForward className="size-4" />
+        </button>
+
+        <div className="flex-1 flex items-center gap-2">
+          <div className="flex-1 relative h-1.5 rounded-full bg-surface-container overflow-hidden">
+            <div
+              className="absolute inset-y-0 left-0 bg-primary rounded-full"
+              style={{ width: `${(time / total) * 100}%` }}
+            />
+            <div
+              className="absolute top-1/2 -translate-y-1/2 size-3 rounded-full bg-lime border-2 border-primary shadow-[var(--shadow-lime)]"
+              style={{ left: `calc(${(time / total) * 100}% - 6px)` }}
+            />
+          </div>
+          <span className="font-mono text-[9.5px] text-primary tabular">{fmt(time)}</span>
         </div>
-        <div className="flex flex-col items-end leading-none">
-          <span className="font-mono text-[10px] text-muted-foreground tabular">DUR 06:57:00</span>
-          <span className="font-mono text-[11px] text-foreground tabular">{fmt(time)}</span>
-        </div>
-      </div>
-      <div className="px-4 pb-2">
-        <input
-          type="range"
-          min={0}
-          max={total}
-          value={time}
-          onChange={(e) => onSeek(Number(e.target.value))}
-          className="w-full h-1 accent-[var(--color-accent)] cursor-pointer"
-          style={{
-            background: `linear-gradient(to right, var(--color-accent) ${pct}%, var(--color-surface) ${pct}%)`,
-          }}
-        />
       </div>
     </div>
   );
 }
 
 function fmt(s: number) {
-  const h = Math.floor(s / 3600).toString().padStart(2, "0");
-  const m = Math.floor((s % 3600) / 60).toString().padStart(2, "0");
+  const m = Math.floor(s / 60).toString().padStart(2, "0");
   const sec = Math.floor(s % 60).toString().padStart(2, "0");
-  return `${h}:${m}:${sec}:00`;
+  const f = Math.floor((s % 1) * 24).toString().padStart(2, "0");
+  return `${m}:${sec}:${f}`;
 }
 
-function TransportBtn({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+/* ─────────────────────────── ZONE 3 — Ruler ─────────────────────────── */
+
+function Zone3Ruler({ time }: { time: number }) {
+  const total = 417;
+  const pct = (time / total) * 100;
   return (
-    <button
-      onClick={onClick}
-      className="size-8 grid place-items-center rounded-md bg-surface ring-1 ring-border text-muted-foreground active:bg-panel-elevated active:text-foreground"
-    >
-      {children}
-    </button>
+    <div className="px-3 pt-2 shrink-0">
+      <div className="relative h-6 glass rounded-t-xl rounded-b-none overflow-hidden">
+        <div className="absolute inset-0 flex items-end px-2 pb-1">
+          {Array.from({ length: 24 }).map((_, i) => {
+            const major = i % 4 === 0;
+            return (
+              <div key={i} className="flex-1 flex flex-col items-start justify-end gap-0.5">
+                {major && (
+                  <span className="font-mono text-[7.5px] text-primary/60 tabular leading-none">
+                    {String(i).padStart(2, "0")}s
+                  </span>
+                )}
+                <div
+                  className="w-px bg-primary/50"
+                  style={{ height: major ? "8px" : "4px" }}
+                />
+              </div>
+            );
+          })}
+        </div>
+        {/* Playhead diamond */}
+        <div className="absolute top-0 bottom-0 z-10" style={{ left: `${pct}%` }}>
+          <div className="absolute -top-px -left-1.5 size-3 rotate-45 bg-lime shadow-[var(--shadow-lime)]" />
+        </div>
+      </div>
+    </div>
   );
 }
 
-function Timeline({
+/* ─────────────────────────── ZONE 4 — Context Canvas ─────────────────────────── */
+
+function Zone4Canvas({
   selected, onSelect,
-}: { selected: string | null; onSelect: (id: string) => void }) {
-  const [zoom, setZoom] = useState(1);
+}: { selected: string | null; onSelect: (id: string | null) => void }) {
+  const total = 417;
   return (
-    <section className="relative bg-background flex flex-col shrink-0">
-      <div className="flex items-center justify-between px-3 h-7 border-b border-border bg-surface/60">
-        <span className="text-[9px] font-bold tracking-wider text-muted-foreground">TIMELINE</span>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} className="size-6 grid place-items-center rounded text-muted-foreground active:bg-panel-elevated">
-            <ZoomOut className="size-3" />
-          </button>
-          <span className="text-[9px] font-mono text-muted-foreground tabular w-8 text-center">{zoom.toFixed(2)}x</span>
-          <button onClick={() => setZoom((z) => Math.min(3, z + 0.25))} className="size-6 grid place-items-center rounded text-muted-foreground active:bg-panel-elevated">
-            <ZoomIn className="size-3" />
-          </button>
-        </div>
-      </div>
-
-      <div className="relative overflow-x-auto no-scrollbar">
-        <div style={{ minWidth: `${800 * zoom}px` }}>
-          {/* Ruler */}
-          <div className="h-6 border-b border-border bg-surface/40 flex items-end px-12 gap-0 relative">
-            {Array.from({ length: 20 }).map((_, i) => (
-              <div key={i} className="flex-1 flex flex-col items-start gap-0.5">
-                <span className="font-mono text-[8px] text-muted-foreground/70 tabular">
-                  {String(i * 2).padStart(2, "0")}s
-                </span>
-                <div className="w-px h-1 bg-border-strong" />
-              </div>
-            ))}
-          </div>
-
-          <div className="py-1">
+    <section className="flex-1 min-h-0 px-3 pb-1 relative">
+      <div className="relative h-full glass rounded-b-xl rounded-t-none overflow-hidden">
+        <div className="absolute inset-0 overflow-y-auto overflow-x-auto no-scrollbar">
+          <div style={{ minWidth: "780px" }} className="py-2.5 pl-2 pr-3 space-y-1.5">
             <TrackRow label="V2" kind="video">
-              <Clip id="v2-1" width={140 * zoom} kind="fx" label="Adjustment · Curves" selected={selected === "v2-1"} onSelect={onSelect} />
+              <Clip id="v2-1" w={160} kind="text" label="TITLE · Kinetic" selected={selected === "v2-1"} onSelect={onSelect} />
             </TrackRow>
             <TrackRow label="V1" kind="video" primary>
-              <FilmstripClip id="v1-1" width={190 * zoom} label="MVI_0921" hue={200} selected={selected === "v1-1"} onSelect={onSelect} />
-              <FilmstripClip id="v1-2" width={250 * zoom} label="MVI_0922" hue={20} selected={selected === "v1-2"} onSelect={onSelect} />
-              <FilmstripClip id="v1-3" width={120 * zoom} label="MVI_0923" hue={280} selected={selected === "v1-3"} onSelect={onSelect} />
+              <FilmstripClip id="v1-1" w={180} label="MVI_0921" hue={0} selected={selected === "v1-1"} onSelect={onSelect} />
+              <FilmstripClip id="v1-2" w={240} label="MVI_0922" hue={20} selected={selected === "v1-2"} onSelect={onSelect} />
+              <FilmstripClip id="v1-3" w={140} label="MVI_0923" hue={200} selected={selected === "v1-3"} onSelect={onSelect} />
             </TrackRow>
-            <div className="h-1.5" />
             <TrackRow label="A1" kind="audio">
-              <WaveClip id="a1-1" width={360 * zoom} label="DIALOG.wav" selected={selected === "a1-1"} onSelect={onSelect} />
-              <WaveClip id="a1-2" width={180 * zoom} label="ROOM_TONE.wav" dim selected={selected === "a1-2"} onSelect={onSelect} />
+              <WaveClip id="a1-1" w={340} label="DIALOG.wav" selected={selected === "a1-1"} onSelect={onSelect} />
+              <WaveClip id="a1-2" w={180} label="ROOM_TONE.wav" dim selected={selected === "a1-2"} onSelect={onSelect} />
             </TrackRow>
             <TrackRow label="A2" kind="audio">
-              <WaveClip id="a2-1" width={520 * zoom} label="SCORE_MUSICGEN_v3.wav" tone="fx" selected={selected === "a2-1"} onSelect={onSelect} />
+              <WaveClip id="a2-1" w={500} label="MUSICGEN_v3.wav" tone="lime" selected={selected === "a2-1"} onSelect={onSelect} />
             </TrackRow>
-            <TrackRow label="A3" kind="audio" empty />
           </div>
         </div>
 
-        {/* Playhead */}
-        <div className="absolute top-6 bottom-0 left-1/2 w-px bg-accent z-30 shadow-[0_0_10px_var(--color-accent)] pointer-events-none">
-          <div className="absolute -top-0 -left-1.5 size-3 rotate-45 bg-accent shadow-md" />
-        </div>
-      </div>
+        {/* Playhead column through Z4 */}
+        <div
+          className="absolute top-0 bottom-0 w-px bg-lime pointer-events-none z-10"
+          style={{ left: "calc(12px + (768px * 0.6))" }}
+        />
 
-      <div className="absolute right-3 top-10 flex flex-col gap-2 z-40">
-        <FloatTool active><Scissors className="size-4" /></FloatTool>
-        <FloatTool><Magnet className="size-4" /></FloatTool>
-        <FloatTool><Maximize2 className="size-4" /></FloatTool>
+        {/* Floating tool cluster (right) */}
+        <div className="absolute right-3 top-3 flex flex-col gap-2 z-20">
+          <FloatTool active><Scissors className="size-3.5" /></FloatTool>
+          <FloatTool><Magnet className="size-3.5" /></FloatTool>
+          <FloatTool><Maximize2 className="size-3.5" /></FloatTool>
+        </div>
+
+        {/* Subtle duration label */}
+        <div className="absolute bottom-2 right-3 glass-dark rounded-full px-2 py-0.5 text-[8.5px] font-mono text-lime/90">
+          {String(Math.floor(total / 60)).padStart(2, "0")}:{String(total % 60).padStart(2, "0")} total
+        </div>
       </div>
     </section>
   );
@@ -236,8 +341,8 @@ function Timeline({
 function FloatTool({ children, active }: { children: React.ReactNode; active?: boolean }) {
   return (
     <button
-      className={`size-9 rounded-full grid place-items-center ring-1 shadow-lg active:scale-95 transition-transform backdrop-blur-md ${
-        active ? "bg-foreground text-background ring-white/20" : "bg-panel/90 text-muted-foreground ring-border"
+      className={`size-9 rounded-full grid place-items-center transition-transform active:scale-95 ${
+        active ? "bg-primary text-on-primary shadow-[var(--shadow-glass-lg)]" : "glass-strong text-primary"
       }`}
     >
       {children}
@@ -246,413 +351,543 @@ function FloatTool({ children, active }: { children: React.ReactNode; active?: b
 }
 
 function TrackRow({
-  label, kind, primary, empty, children,
-}: {
-  label: string;
-  kind: "video" | "audio";
-  primary?: boolean;
-  empty?: boolean;
-  children?: React.ReactNode;
-}) {
+  label, kind, primary, children,
+}: { label: string; kind: "video" | "audio"; primary?: boolean; children: React.ReactNode }) {
   return (
-    <div className={`flex items-center gap-1 ${primary ? "h-16" : "h-12"} px-3`}>
-      <div className="sticky left-0 z-20 w-10 h-full flex flex-col justify-center items-start gap-1 pr-1 bg-background">
-        <span className="text-[9px] font-bold text-muted-foreground tracking-wider">{label}</span>
-        <div className="flex gap-1">
-          <Lock className="size-2.5 text-muted-foreground/60" />
-          {kind === "video" ? (
-            <Eye className="size-2.5 text-muted-foreground/60" />
-          ) : (
-            <Volume2 className="size-2.5 text-muted-foreground/60" />
-          )}
+    <div className={`flex items-center gap-2 ${primary ? "h-14" : "h-10"}`}>
+      <div className="sticky left-0 z-10 w-9 h-full flex flex-col items-start justify-center gap-1 pl-1 bg-gradient-to-r from-white/80 to-transparent">
+        <span className="font-mono text-[9px] font-bold text-primary tracking-wider">{label}</span>
+        <div className="flex gap-1 text-primary/40">
+          <Lock className="size-2.5" />
+          {kind === "video" ? <Eye className="size-2.5" /> : <Volume2 className="size-2.5" />}
         </div>
       </div>
-      {empty ? (
-        <div className="h-9 flex-1 rounded-md border border-dashed border-border grid place-items-center">
-          <span className="text-[9px] font-medium text-muted-foreground/60 uppercase tracking-wider">
-            <Plus className="size-3 inline -translate-y-px mr-1" /> Drop media
-          </span>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1 h-full">{children}</div>
-      )}
+      <div className="flex items-center gap-1 h-full">{children}</div>
     </div>
   );
 }
 
 function Clip({
-  id, width, label, selected, onSelect,
-}: { id: string; width: number; kind: "fx"; label: string; selected?: boolean; onSelect: (id: string) => void }) {
+  id, w, label, selected, onSelect,
+}: { id: string; w: number; kind: "text"; label: string; selected?: boolean; onSelect: (id: string) => void }) {
   return (
     <button
       onClick={() => onSelect(id)}
-      style={{ width }}
-      className={`h-9 rounded-md border bg-track-fx/15 border-track-fx/40 text-track-fx flex items-center px-2 gap-1.5 shrink-0 ${
-        selected ? "ring-2 ring-accent" : ""
+      style={{ width: w }}
+      className={`h-9 rounded-[12px] bg-primary text-on-primary flex items-center px-2.5 gap-1.5 shrink-0 transition-all ${
+        selected ? "ring-2 ring-lime shadow-[var(--shadow-lime)]" : ""
       }`}
     >
-      <Wand2 className="size-3" />
-      <span className="text-[9px] font-semibold truncate">{label}</span>
+      <Type className="size-3 text-lime" />
+      <span className="text-[9.5px] font-mono font-medium truncate">{label}</span>
     </button>
   );
 }
 
 function FilmstripClip({
-  id, width, label, hue, selected, onSelect,
-}: { id: string; width: number; label: string; hue: number; selected?: boolean; onSelect: (id: string) => void }) {
+  id, w, label, hue, selected, onSelect,
+}: { id: string; w: number; label: string; hue: number; selected?: boolean; onSelect: (id: string) => void }) {
   return (
     <button
       onClick={() => onSelect(id)}
-      style={{ width }}
-      className={`h-14 rounded-md ring-1 ring-black/40 border-l-2 border-l-accent overflow-hidden relative shrink-0 shadow-md ${
-        selected ? "outline outline-2 outline-accent" : ""
+      style={{ width: w }}
+      className={`h-12 rounded-[12px] relative overflow-hidden shrink-0 transition-all ${
+        selected ? "ring-2 ring-lime shadow-[var(--shadow-lime)]" : "ring-1 ring-primary/20"
       }`}
     >
       <div
-        className="absolute inset-0 opacity-80"
+        className="absolute inset-0"
         style={{
           backgroundImage: `url(${previewFrame})`,
           backgroundSize: "cover",
           backgroundPosition: `${hue}% center`,
-          filter: `hue-rotate(${hue}deg) saturate(0.85)`,
+          filter: `hue-rotate(${hue}deg) saturate(0.9)`,
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-      <div className="absolute inset-0 flex flex-col justify-between p-1.5">
-        <div className="flex gap-1 opacity-50">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex-1 h-3 bg-white/10 rounded-[2px]" />
-          ))}
-        </div>
-        <span className="text-[8.5px] font-semibold font-mono bg-black/40 self-start px-1 rounded text-foreground/90">
-          {label}
-        </span>
-      </div>
-    </button>
-  );
-}
-
-function WaveClip({
-  id, width, label, dim, tone = "audio", selected, onSelect,
-}: { id: string; width: number; label: string; dim?: boolean; tone?: "audio" | "fx"; selected?: boolean; onSelect: (id: string) => void }) {
-  const bars = Array.from({ length: Math.floor(width / 4) }, (_, i) =>
-    3 + Math.abs(Math.sin(i * 0.6) + Math.cos(i * 0.21)) * 7,
-  );
-  const colorClass = tone === "fx" ? "bg-track-fx/60" : "bg-track-audio/70";
-  const ringClass = tone === "fx" ? "border-track-fx/40 bg-track-fx/10" : "border-track-audio/40 bg-track-audio/10";
-  return (
-    <button
-      onClick={() => onSelect(id)}
-      style={{ width }}
-      className={`h-9 rounded-md border ${ringClass} relative overflow-hidden shrink-0 ${dim ? "opacity-60" : ""} ${
-        selected ? "ring-2 ring-accent" : ""
-      }`}
-    >
-      <div className="absolute inset-x-1 inset-y-1 flex items-center gap-[1px]">
-        {bars.map((h, i) => (
-          <div key={i} className={`flex-1 ${colorClass} rounded-[1px]`} style={{ height: `${h * 10}%` }} />
-        ))}
-      </div>
-      <span className="absolute bottom-0.5 left-1.5 text-[8px] font-mono text-foreground/80 bg-black/30 px-1 rounded">
+      <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-transparent to-transparent" />
+      <span className="absolute bottom-1 left-1.5 text-[8.5px] font-mono font-medium text-white">
         {label}
       </span>
     </button>
   );
 }
 
-/* ---------- Control deck ---------- */
+function WaveClip({
+  id, w, label, dim, tone = "audio", selected, onSelect,
+}: { id: string; w: number; label: string; dim?: boolean; tone?: "audio" | "lime"; selected?: boolean; onSelect: (id: string) => void }) {
+  const bars = Array.from({ length: Math.floor(w / 4) }, (_, i) =>
+    3 + Math.abs(Math.sin(i * 0.55) + Math.cos(i * 0.21)) * 7,
+  );
+  const bg = tone === "lime" ? "bg-lime-soft" : "bg-tertiary-container";
+  const bar = tone === "lime" ? "bg-secondary" : "bg-primary/70";
+  return (
+    <button
+      onClick={() => onSelect(id)}
+      style={{ width: w }}
+      className={`h-9 rounded-[12px] ${bg} relative overflow-hidden shrink-0 transition-all ${
+        dim ? "opacity-60" : ""
+      } ${selected ? "ring-2 ring-lime shadow-[var(--shadow-lime)]" : "ring-1 ring-primary/15"}`}
+    >
+      <div className="absolute inset-x-1.5 inset-y-1.5 flex items-center gap-[1px]">
+        {bars.map((h, i) => (
+          <div key={i} className={`flex-1 ${bar} rounded-[1px]`} style={{ height: `${h * 9}%` }} />
+        ))}
+      </div>
+      <span className="absolute bottom-0.5 left-1.5 text-[8px] font-mono text-primary/80">{label}</span>
+    </button>
+  );
+}
 
-const DECK_TABS: { id: Deck; label: string; badge?: string }[] = [
-  { id: "edit", label: "EDIT" },
-  { id: "vfx", label: "VFX" },
-  { id: "audio", label: "AUDIO" },
-  { id: "ai", label: "MODELS", badge: "AI" },
-  { id: "export", label: "RENDER" },
+/* ─────────────────────────── ZONE 5 — Control Deck ─────────────────────────── */
+
+const DECK_TABS: { id: Deck; label: string; icon: typeof Film }[] = [
+  { id: "media", label: "Media", icon: Library },
+  { id: "text", label: "Text", icon: Type },
+  { id: "audio", label: "Audio", icon: AudioLines },
+  { id: "effects", label: "Effects", icon: Sparkles },
+  { id: "transitions", label: "Transit", icon: ImageIcon },
+  { id: "ai", label: "Models", icon: Sliders },
 ];
 
-function ControlDeck({
-  deck, setDeck, selectedClip,
-}: { deck: Deck; setDeck: (d: Deck) => void; selectedClip: string | null }) {
+function Zone5Deck({
+  deck, setDeck, selectedClip, onEscape,
+}: {
+  deck: Deck;
+  setDeck: (d: Deck) => void;
+  selectedClip: string | null;
+  onEscape: () => void;
+}) {
   return (
-    <section className="bg-panel border-t border-border shrink-0">
-      <div className="flex border-b border-border/60 overflow-x-auto no-scrollbar">
-        {DECK_TABS.map((t) => {
-          const active = deck === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setDeck(t.id)}
-              className={`flex-1 min-w-[70px] h-9 text-[10px] font-bold tracking-wider flex items-center justify-center gap-1 border-b-2 transition-colors ${
-                active ? "text-foreground border-foreground bg-panel-elevated/40" : "text-muted-foreground border-transparent"
-              }`}
-            >
-              {t.badge && (
-                <span className="text-[8px] px-1 py-px rounded bg-border-strong text-foreground/90">{t.badge}</span>
-              )}
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="pb-3">
-        {deck === "edit" && <EditDeck selectedClip={selectedClip} />}
-        {deck === "vfx" && <VfxDeck />}
-        {deck === "audio" && <AudioDeck />}
-        {deck === "ai" && <AiDeck />}
-        {deck === "export" && <ExportDeck />}
+    <section className="px-3 pb-3 pt-1 relative">
+      <div className="glass-strong rounded-3xl overflow-hidden">
+        {deck === "default" ? (
+          <DefaultDeck setDeck={setDeck} onEscape={onEscape} hasSelection={!!selectedClip} />
+        ) : (
+          <TuningInterface deck={deck} setDeck={setDeck} onEscape={onEscape} selectedClip={selectedClip} />
+        )}
       </div>
     </section>
   );
 }
 
-function DeckHeader({ title, hint }: { title: string; hint?: string }) {
+function DefaultDeck({
+  setDeck, onEscape, hasSelection,
+}: { setDeck: (d: Deck) => void; onEscape: () => void; hasSelection: boolean }) {
   return (
-    <div className="flex items-center justify-between px-4 pt-3 pb-2">
-      <h3 className="text-[11px] font-semibold tracking-wide text-foreground">{title}</h3>
-      {hint && <span className="text-[9px] text-muted-foreground font-mono">{hint}</span>}
-    </div>
-  );
-}
-
-function EditDeck({ selectedClip }: { selectedClip: string | null }) {
-  const tools = ["Split", "Ripple", "Rolling", "Slip", "Slide", "Rate"];
-  const [active, setActive] = useState(0);
-  return (
-    <div>
-      <DeckHeader title="Tactile Toolset" hint={selectedClip ?? "no selection"} />
-      <div className="grid grid-cols-3 gap-2 px-4">
-        {tools.map((t, i) => (
-          <button
-            key={t}
-            onClick={() => setActive(i)}
-            className={`h-12 rounded-md border ${
-              active === i ? "bg-foreground text-background border-foreground" : "bg-surface border-border text-foreground/90"
-            } text-[10px] font-semibold tracking-wide active:scale-95 transition-transform`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-2 px-4 mt-3">
-        <Stat label="In" value="04:11:02" />
-        <Stat label="Out" value="04:14:21" />
-      </div>
-    </div>
-  );
-}
-
-function VfxDeck() {
-  const [active, setActive] = useState<string>("Color · Curves");
-  const fx = [
-    { n: "Gaussian Blur", v: "12%" },
-    { n: "Color · Curves", v: "ON" },
-    { n: "RGB Split", v: "3px" },
-    { n: "Film Grain", v: "18" },
-    { n: "Chroma Key", v: "—" },
-    { n: "Vignette", v: "0.4" },
-  ];
-  return (
-    <div>
-      <DeckHeader title="Effects · 25 Blend modes" hint="GPU · Vulkan" />
-      <div className="px-4 grid grid-cols-2 gap-2">
-        {fx.map((f) => (
-          <button
-            key={f.n}
-            onClick={() => setActive(f.n)}
-            className={`h-12 rounded-md border px-3 flex items-center justify-between transition-colors ${
-              active === f.n ? "bg-panel-elevated border-accent/40" : "bg-surface border-border"
-            }`}
-          >
-            <span className="text-[10px] font-medium">{f.n}</span>
-            <span className="text-[9px] font-mono text-accent">{f.v}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AudioDeck() {
-  const bands = [60, 250, 500, 1000, 4000, 8000];
-  const [eq, setEq] = useState([40, 70, 55, 80, 45, 60]);
-  return (
-    <div>
-      <DeckHeader title="6-Band EQ · Master Bus" hint="-6.2 dB" />
-      <div className="px-4 flex items-end gap-2 h-28">
-        {bands.map((b, i) => (
-          <div key={b} className="flex-1 flex flex-col items-center gap-1">
-            <div className="w-full h-20 bg-surface rounded border border-border relative overflow-hidden">
-              <div
-                className="absolute bottom-0 inset-x-0 bg-track-audio/70 transition-all"
-                style={{ height: `${eq[i]}%` }}
-              />
-              <div className="absolute left-0 right-0 top-1/2 h-px bg-border-strong" />
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={eq[i]}
-                onChange={(e) => {
-                  const next = [...eq];
-                  next[i] = Number(e.target.value);
-                  setEq(next);
-                }}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-                style={{ writingMode: "vertical-lr" as any }}
-              />
-            </div>
-            <span className="text-[8px] font-mono text-muted-foreground">{b >= 1000 ? `${b / 1000}k` : b}</span>
+    <div className="p-3">
+      <div className="flex items-center gap-2 mb-2.5 pl-1">
+        <EscapementPillar onPress={onEscape} compact />
+        <div className="leading-tight">
+          <div className="font-display text-[12px] font-semibold text-primary">
+            {hasSelection ? "Clip · Selected" : "Workspace · Idle"}
           </div>
-        ))}
-      </div>
-      <div className="flex gap-2 px-4 mt-2">
-        <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
-          <div className="h-full w-3/4 bg-gradient-to-r from-ok via-accent to-rec" />
+          <div className="text-[9px] font-mono text-on-surface-variant uppercase tracking-wider">
+            Tap a category to morph deck
+          </div>
         </div>
-        <span className="text-[9px] font-mono text-muted-foreground tabular">L -3.2 · R -4.1</span>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+        {DECK_TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setDeck(t.id)}
+            className="shrink-0 w-16 h-16 rounded-2xl glass flex flex-col items-center justify-center gap-1 text-primary active:scale-95 transition-transform"
+          >
+            <t.icon className="size-4" />
+            <span className="text-[9.5px] font-semibold">{t.label}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
 }
 
-function AiDeck() {
-  const [running, setRunning] = useState<string | null>(null);
+function TuningInterface({
+  deck, onEscape, selectedClip,
+}: {
+  deck: Deck;
+  setDeck: (d: Deck) => void;
+  onEscape: () => void;
+  selectedClip: string | null;
+}) {
   return (
-    <div className="px-4 pt-3 pb-3 space-y-2.5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-[11px] font-semibold">On-Device Intelligence</h3>
-        <span className="text-[9px] font-mono text-ok flex items-center gap-1">
-          <span className="size-1.5 rounded-full bg-ok animate-pulse" /> NNAPI · Hexagon
+    <div className="p-3">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <EscapementPillar onPress={onEscape} />
+          <div className="leading-tight">
+            <div className="font-display text-[13px] font-semibold text-primary capitalize">{deck}</div>
+            <div className="text-[9px] font-mono text-on-surface-variant uppercase tracking-wider">
+              {selectedClip ?? "no selection"}
+            </div>
+          </div>
+        </div>
+        <span className="px-2 py-1 rounded-full bg-lime text-primary text-[9px] font-mono font-semibold tracking-wider">
+          TUNING
         </span>
       </div>
 
-      <button
-        onClick={() => setRunning("whisper")}
-        className="w-full flex items-center justify-between rounded-md bg-foreground text-background px-3 h-10 active:scale-[0.98] transition-transform"
-      >
-        <div className="flex items-center gap-2">
-          <Captions className="size-4" />
-          <div className="flex flex-col items-start leading-tight">
-            <span className="text-[11px] font-bold">
-              {running === "whisper" ? "Transcribing…" : "Run Whisper Transcription"}
-            </span>
-            <span className="text-[9px] opacity-70">Tiny · 39M params · local</span>
-          </div>
-        </div>
-        <Play className="size-3.5" />
-      </button>
+      {deck === "media" && <MediaPanel />}
+      {deck === "text" && <TextPanel />}
+      {deck === "audio" && <AudioPanel />}
+      {deck === "effects" && <EffectsPanel />}
+      {deck === "transitions" && <TransitionsPanel />}
+      {deck === "ai" && <AiPanel />}
+    </div>
+  );
+}
 
-      <div className="grid grid-cols-2 gap-2">
-        <AiCard icon={<Mic className="size-3.5" />} title="Kokoro TTS" sub="Voice: Bella v1.2" dot="ok" />
-        <AiCard icon={<Music2 className="size-3.5" />} title="MusicGen" sub="Ambient · 0:42" dot="audio" />
-        <AiCard icon={<Sparkles className="size-3.5" />} title="Scene Detect" sub="14 cuts found" dot="fx" />
-        <AiCard icon={<Layers className="size-3.5" />} title="Auto Captions" sub="VLM · 1 fps" dot="accent" />
+function EscapementPillar({ onPress, compact }: { onPress: () => void; compact?: boolean }) {
+  return (
+    <button
+      onClick={onPress}
+      className={`${compact ? "h-9 px-3" : "h-10 px-3.5"} rounded-full bg-primary text-on-primary flex items-center gap-1.5 shadow-[var(--shadow-glass-lg)] active:scale-95 transition-transform`}
+      aria-label="Escape · drop one layer"
+    >
+      <ArrowLeft className="size-3.5 text-lime" />
+      <span className="text-[9.5px] font-mono font-semibold tracking-wider">ESC</span>
+    </button>
+  );
+}
+
+/* Tuning panels */
+
+function MediaPanel() {
+  return (
+    <div>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <button key={i} className="relative aspect-square rounded-xl overflow-hidden ring-1 ring-primary/10 active:scale-95 transition-transform">
+            <img src={previewFrame} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ filter: `hue-rotate(${i * 40}deg)` }} />
+            <div className="absolute inset-0 bg-gradient-to-t from-primary/70 to-transparent" />
+            <span className="absolute bottom-1 left-1 font-mono text-[8px] text-white">MVI_092{i}</span>
+          </button>
+        ))}
+      </div>
+      <button className="w-full h-10 rounded-full bg-lime text-primary text-[10.5px] font-mono font-semibold tracking-wider active:scale-[0.98]">
+        + INGEST FROM MEDIASTORE
+      </button>
+    </div>
+  );
+}
+
+function TextPanel() {
+  const presets = ["Kinetic", "Lower Third", "Subtitle", "Title Card", "Caption", "Credit"];
+  return (
+    <div>
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {presets.map((p) => (
+          <button key={p} className="h-14 rounded-xl glass flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform">
+            <Type className="size-3.5 text-secondary" />
+            <span className="text-[9.5px] font-semibold text-primary">{p}</span>
+          </button>
+        ))}
+      </div>
+      <div className="glass rounded-xl p-2.5 flex items-center gap-2">
+        <input
+          placeholder="Type a title…"
+          className="flex-1 bg-transparent outline-none text-[12px] text-primary placeholder:text-on-surface-variant/60"
+        />
+        <button className="h-8 px-3 rounded-full bg-primary text-on-primary text-[9.5px] font-mono font-semibold">
+          COMMIT
+        </button>
       </div>
     </div>
   );
 }
 
-function AiCard({
-  icon, title, sub, dot,
-}: { icon: React.ReactNode; title: string; sub: string; dot: "ok" | "audio" | "fx" | "accent" }) {
-  const dotClass = {
-    ok: "bg-ok", audio: "bg-track-audio", fx: "bg-track-fx", accent: "bg-accent",
-  }[dot];
+function AudioPanel() {
+  const bands = [60, 250, 500, "1k", "4k", "8k"];
+  const [eq, setEq] = useState([40, 70, 55, 80, 45, 60]);
   return (
-    <button className="p-2.5 rounded-md bg-surface border border-border flex flex-col gap-1.5 text-left active:bg-panel-elevated">
+    <div>
+      <div className="flex items-end gap-2 h-24 mb-2">
+        {bands.map((b, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+            <div className="relative w-full h-20 rounded-lg bg-surface-container overflow-hidden">
+              <div className="absolute bottom-0 inset-x-0 bg-secondary transition-all" style={{ height: `${eq[i]}%` }} />
+              <input
+                type="range" min={0} max={100} value={eq[i]}
+                onChange={(e) => {
+                  const next = [...eq]; next[i] = +e.target.value; setEq(next);
+                }}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+              <div className="absolute left-0 right-0 top-1/2 h-px bg-primary/20" />
+            </div>
+            <span className="text-[8.5px] font-mono text-on-surface-variant">{b}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 rounded-full bg-surface-container overflow-hidden">
+          <div className="h-full w-3/4 bg-gradient-to-r from-lime via-secondary to-error" />
+        </div>
+        <span className="text-[9px] font-mono text-primary tabular">L -3.2 · R -4.1</span>
+      </div>
+    </div>
+  );
+}
+
+function EffectsPanel() {
+  const fx = [
+    { n: "Curves", v: "ON" },
+    { n: "Gaussian", v: "12%" },
+    { n: "RGB Split", v: "3px" },
+    { n: "Grain", v: "18" },
+    { n: "Chroma", v: "—" },
+    { n: "Vignette", v: "0.4" },
+  ];
+  const [active, setActive] = useState("Curves");
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {fx.map((f) => (
+        <button
+          key={f.n}
+          onClick={() => setActive(f.n)}
+          className={`h-12 rounded-xl px-3 flex items-center justify-between transition-colors ${
+            active === f.n ? "bg-primary text-on-primary" : "glass text-primary"
+          }`}
+        >
+          <span className="text-[10.5px] font-semibold">{f.n}</span>
+          <span className={`text-[9px] font-mono ${active === f.n ? "text-lime" : "text-secondary"}`}>{f.v}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TransitionsPanel() {
+  const trs = ["Cut", "Dissolve", "Wipe L→R", "Push", "Zoom", "Glitch", "Whip", "Iris"];
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {trs.map((t) => (
+        <button key={t} className="h-14 rounded-xl glass flex flex-col items-center justify-center gap-1 active:scale-95">
+          <div className="size-5 rounded-md bg-gradient-to-br from-secondary to-primary" />
+          <span className="text-[9px] font-semibold text-primary">{t}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AiPanel() {
+  return (
+    <div className="space-y-2">
+      <button className="w-full h-12 rounded-2xl bg-primary text-on-primary px-3 flex items-center justify-between active:scale-[0.98]">
+        <div className="flex items-center gap-2">
+          <Captions className="size-4 text-lime" />
+          <div className="leading-tight text-left">
+            <div className="text-[11px] font-display font-bold">Whisper · Transcribe</div>
+            <div className="text-[9px] font-mono text-lime/80">Tiny · 39M · NNAPI</div>
+          </div>
+        </div>
+        <Play className="size-3.5 text-lime" />
+      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <AiCard icon={<Mic className="size-3.5" />} title="Kokoro TTS" sub="Bella v1.2" />
+        <AiCard icon={<Music2 className="size-3.5" />} title="MusicGen" sub="Ambient · 0:42" />
+        <AiCard icon={<Sparkles className="size-3.5" />} title="Scene" sub="14 cuts found" />
+        <AiCard icon={<Layers className="size-3.5" />} title="VLM Index" sub="1 fps · ready" />
+      </div>
+    </div>
+  );
+}
+
+function AiCard({ icon, title, sub }: { icon: React.ReactNode; title: string; sub: string }) {
+  return (
+    <button className="glass rounded-2xl p-2.5 flex flex-col gap-1.5 text-left active:scale-95">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground">{icon}</span>
-        <span className={`size-1.5 rounded-full ${dotClass}`} />
+        <span className="text-primary">{icon}</span>
+        <span className="size-1.5 rounded-full bg-lime shadow-[var(--shadow-lime)]" />
       </div>
       <div className="leading-tight">
-        <div className="text-[10.5px] font-semibold">{title}</div>
-        <div className="text-[9px] text-muted-foreground font-mono">{sub}</div>
+        <div className="text-[10.5px] font-display font-semibold text-primary">{title}</div>
+        <div className="text-[9px] font-mono text-on-surface-variant">{sub}</div>
       </div>
     </button>
   );
 }
 
-function ExportDeck() {
+/* ─────────────────────────── AI AGENT — seam anchor ─────────────────────────── */
+
+function AgentAnchor({
+  open, setOpen,
+}: { open: boolean; setOpen: (b: boolean) => void }) {
+  const [processing, setProcessing] = useState(false);
+
+  return (
+    <>
+      {/* Idle: small circle pinned to extreme left of Z4/Z5 seam */}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="absolute left-5 -top-5 z-30 size-11 rounded-full bg-primary grid place-items-center shadow-[var(--shadow-glass-lg)] active:scale-95 transition-transform ring-2 ring-white/70"
+          aria-label="AI Agent"
+        >
+          <SparkIcon />
+          <span className="absolute inset-0 rounded-full ring-1 ring-lime/30" />
+        </button>
+      )}
+
+      {/* Active: expanded full-width capsule */}
+      {open && (
+        <div className="absolute left-3 right-3 -top-7 z-30">
+          <div className="relative h-14 rounded-full bg-primary px-3 flex items-center gap-3 shadow-[var(--shadow-glass-lg)] ring-2 ring-lime/40">
+            <div className="size-9 rounded-full bg-lime grid place-items-center shrink-0">
+              <SparkIcon dark />
+            </div>
+            {processing ? (
+              <div className="flex-1 flex items-center gap-2">
+                <div className="size-5 rounded-full border-2 border-lime/30 border-t-lime animate-spin" />
+                <span className="text-[11px] font-mono text-lime">Routing to local matrix…</span>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center gap-2">
+                <Waveform />
+                <span className="text-[10.5px] font-mono text-lime/80 shrink-0">Listening…</span>
+              </div>
+            )}
+            <button
+              onClick={() => { setProcessing(true); setTimeout(() => { setProcessing(false); setOpen(false); }, 1600); }}
+              className="size-9 rounded-full bg-lime text-primary grid place-items-center text-[9.5px] font-mono font-bold"
+            >
+              GO
+            </button>
+            <button
+              onClick={() => { setOpen(false); setProcessing(false); }}
+              className="size-9 rounded-full bg-primary-container/30 text-lime grid place-items-center"
+            >
+              <X className="size-3.5" />
+            </button>
+            <span className="absolute inset-0 rounded-full ring-2 ring-lime/40 animate-pulse pointer-events-none" />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function SparkIcon({ dark }: { dark?: boolean }) {
+  const c = dark ? "#00180d" : "#c5e1a5";
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" fill="none">
+      <path d="M12 3v6M12 15v6M3 12h6M15 12h6" stroke={c} strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M6 6l3 3M15 15l3 3M6 18l3-3M15 9l3-3" stroke={c} strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+      <circle cx="12" cy="12" r="1.8" fill={c} />
+    </svg>
+  );
+}
+
+function Waveform() {
+  const bars = [4, 7, 12, 18, 14, 9, 16, 22, 18, 11, 8, 14, 20, 16, 10, 6, 12, 18, 15, 9];
+  return (
+    <div className="flex-1 h-8 flex items-center gap-[3px]">
+      {bars.map((h, i) => (
+        <div
+          key={i}
+          className="flex-1 bg-lime rounded-full origin-center animate-pulse"
+          style={{
+            height: `${h * 4}%`,
+            animationDelay: `${i * 60}ms`,
+            animationDuration: "900ms",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────────── Export Terminal (60% overlay) ─────────────────────────── */
+
+function ExportTerminal({ onClose }: { onClose: () => void }) {
+  const [bitrate, setBitrate] = useState(48);
+  const [scale, setScale] = useState(100);
   const presets = ["Low", "Med", "High", "Ultra"];
   const [preset, setPreset] = useState(2);
+  const estSize = Math.round((bitrate * 1.4 + scale * 0.3) * 1.2);
+
+  return (
+    <div className="absolute inset-0 z-50 flex flex-col justify-end">
+      <button onClick={onClose} className="flex-1 bg-primary/20 backdrop-blur-sm" />
+      <div className="glass-strong rounded-t-3xl p-5 h-[60%] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-[9.5px] font-mono uppercase tracking-wider text-secondary">Export Terminal</div>
+            <h2 className="font-display text-[20px] font-bold text-primary">Render to MediaCodec</h2>
+          </div>
+          <button onClick={onClose} className="size-10 rounded-full bg-primary text-on-primary grid place-items-center">
+            <ChevronDown className="size-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 flex-1 overflow-y-auto no-scrollbar">
+          <div>
+            <div className="text-[10px] font-mono uppercase tracking-wider text-on-surface-variant mb-2">Quality preset</div>
+            <div className="grid grid-cols-4 gap-2">
+              {presets.map((p, i) => (
+                <button
+                  key={p}
+                  onClick={() => setPreset(i)}
+                  className={`h-10 rounded-xl text-[10.5px] font-mono font-semibold tracking-wider transition-colors ${
+                    preset === i ? "bg-primary text-on-primary" : "glass text-primary"
+                  }`}
+                >
+                  {p.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <SliderRow label="Bitrate" value={`${bitrate} Mbps`} v={bitrate} onChange={setBitrate} min={4} max={120} />
+          <SliderRow label="Output scale" value={`${scale}%`} v={scale} onChange={setScale} min={25} max={100} />
+
+          <div className="grid grid-cols-3 gap-2">
+            <Stat label="Codec" value="H.265" />
+            <Stat label="Format" value="MP4" />
+            <Stat label="Audio" value="AAC" />
+          </div>
+        </div>
+
+        <div className="mt-4 glass rounded-2xl p-3 flex items-center justify-between">
+          <div>
+            <div className="text-[9.5px] font-mono uppercase tracking-wider text-on-surface-variant">Estimated size</div>
+            <div className="font-display text-[18px] font-bold text-primary tabular">{estSize} MB</div>
+          </div>
+          <button className="h-11 px-5 rounded-full bg-primary text-on-primary text-[11px] font-mono font-semibold tracking-wider flex items-center gap-2 shadow-[var(--shadow-glass-lg)]">
+            <span className="size-2 rounded-full bg-lime shadow-[var(--shadow-lime)]" />
+            START RENDER
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SliderRow({
+  label, value, v, onChange, min, max,
+}: { label: string; value: string; v: number; onChange: (n: number) => void; min: number; max: number }) {
   return (
     <div>
-      <DeckHeader title="MediaCodec · Foreground Service" hint="SoC · OK" />
-      <div className="px-4 grid grid-cols-4 gap-1.5">
-        {presets.map((p, i) => (
-          <button
-            key={p}
-            onClick={() => setPreset(i)}
-            className={`h-9 rounded-md text-[10px] font-bold border transition-colors ${
-              preset === i ? "bg-foreground text-background border-foreground" : "bg-surface border-border"
-            }`}
-          >
-            {p}
-          </button>
-        ))}
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11px] font-display font-semibold text-primary">{label}</span>
+        <span className="text-[10px] font-mono text-secondary tabular">{value}</span>
       </div>
-      <div className="px-4 mt-3 grid grid-cols-3 gap-2">
-        <Stat label="Codec" value="H.265" />
-        <Stat label="Format" value="MP4" />
-        <Stat label="Audio" value="AAC" />
-      </div>
-      <div className="px-4 mt-3">
-        <div className="h-1.5 rounded-full bg-surface overflow-hidden">
-          <div className="h-full w-1/3 bg-accent" />
-        </div>
-        <div className="flex justify-between mt-1.5 text-[9px] font-mono text-muted-foreground">
-          <span>RENDERING · 34%</span>
-          <span>ETA 02:11</span>
-        </div>
-      </div>
+      <input
+        type="range" min={min} max={max} value={v}
+        onChange={(e) => onChange(+e.target.value)}
+        className="w-full h-2 rounded-full bg-surface-container appearance-none cursor-pointer accent-[var(--secondary)]"
+      />
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-surface border border-border px-2.5 py-1.5">
-      <div className="text-[8.5px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="text-[11px] font-mono font-semibold text-foreground tabular">{value}</div>
+    <div className="glass rounded-xl px-3 py-2">
+      <div className="text-[8.5px] uppercase tracking-wider font-mono text-on-surface-variant">{label}</div>
+      <div className="text-[12px] font-display font-bold text-primary tabular">{value}</div>
     </div>
-  );
-}
-
-function EditorBottomNav() {
-  const items = [
-    { icon: Folder, label: "PROJECTS", to: "/" as const },
-    { icon: Film, label: "MEDIA" },
-    { icon: Layers, label: "EDIT", active: true },
-    { icon: Sparkles, label: "EFFECTS" },
-    { icon: Settings, label: "SETTINGS" },
-  ];
-  return (
-    <nav className="fixed bottom-0 inset-x-0 max-w-md mx-auto grid grid-cols-5 h-14 bg-background/95 backdrop-blur border-t border-border z-40 pb-[env(safe-area-inset-bottom)]">
-      {items.map(({ icon: Icon, label, active, to }) =>
-        to ? (
-          <Link
-            key={label}
-            to={to}
-            className={`flex flex-col items-center justify-center gap-1 ${
-              active ? "text-foreground" : "text-muted-foreground/70"
-            }`}
-          >
-            <Icon className="size-4" />
-            <span className="text-[8px] font-bold tracking-tighter">{label}</span>
-          </Link>
-        ) : (
-          <button
-            key={label}
-            className={`flex flex-col items-center justify-center gap-1 ${
-              active ? "text-foreground" : "text-muted-foreground/70"
-            }`}
-          >
-            <Icon className="size-4" />
-            <span className="text-[8px] font-bold tracking-tighter">{label}</span>
-          </button>
-        ),
-      )}
-    </nav>
   );
 }
