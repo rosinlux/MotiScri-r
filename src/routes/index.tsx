@@ -197,30 +197,36 @@ function tintBg(t: "accent" | "audio" | "fx" | "ok") {
 
 export function BottomNav({ active }: { active: "home" | "media" | "workspace" | "ai" | "settings" }) {
   const items = [
-    { id: "home", icon: Folder, label: "PROJECTS", to: "/" as const },
-    { id: "media", icon: Film, label: "MEDIA", to: "/" as const },
-    { id: "workspace", icon: Layers, label: "EDIT", to: "/editor/$projectId" as const, params: { projectId: "neon-city" } },
-    { id: "ai", icon: Sparkles, label: "AI", to: "/" as const },
-    { id: "settings", icon: Settings, label: "SETTINGS", to: "/" as const },
-  ];
+    { id: "home", icon: Folder, label: "PROJECTS" },
+    { id: "media", icon: Film, label: "MEDIA" },
+    { id: "workspace", icon: Layers, label: "EDIT", editor: true },
+    { id: "ai", icon: Sparkles, label: "AI" },
+    { id: "settings", icon: Settings, label: "SETTINGS" },
+  ] as const;
   return (
     <nav className="fixed bottom-0 inset-x-0 max-w-md mx-auto grid grid-cols-5 h-14 bg-background/95 backdrop-blur border-t border-border z-40 pb-[env(safe-area-inset-bottom)]">
       {items.map((it) => {
         const isActive = it.id === active;
-        // @ts-expect-error params optional union
-        return (
-          <Link
-            key={it.id}
-            to={it.to}
-            // @ts-expect-error params optional
-            params={it.params}
-            className={`flex flex-col items-center justify-center gap-1 ${
-              isActive ? "text-foreground" : "text-muted-foreground/60"
-            }`}
-          >
+        const cls = `relative flex flex-col items-center justify-center gap-1 ${
+          isActive ? "text-foreground" : "text-muted-foreground/60"
+        }`;
+        const inner = (
+          <>
             <it.icon className="size-4" />
             <span className="text-[8px] font-bold tracking-tighter">{it.label}</span>
             {isActive && <span className="absolute top-0 h-0.5 w-8 bg-accent rounded-b" />}
+          </>
+        );
+        if ("editor" in it && it.editor) {
+          return (
+            <Link key={it.id} to="/editor/$projectId" params={{ projectId: "neon-city" }} className={cls}>
+              {inner}
+            </Link>
+          );
+        }
+        return (
+          <Link key={it.id} to="/" className={cls}>
+            {inner}
           </Link>
         );
       })}
