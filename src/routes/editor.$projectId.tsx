@@ -538,21 +538,31 @@ function Zone5Deck({
       <div className={`glass-strong rounded-3xl overflow-hidden ${fullscreen ? "h-full flex flex-col" : ""}`}>
         {/* Tab bar */}
         <div className="flex items-center justify-between px-3 pt-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClearSelection}
-              className="h-8 px-2.5 rounded-full bg-primary text-on-primary flex items-center gap-1 shadow-[var(--shadow-glass)] active:scale-95"
-              aria-label="Escape"
-            >
-              <ArrowLeft className="size-3 text-lime" />
-              <span className="text-[9px] font-mono font-semibold tracking-wider">ESC</span>
-            </button>
-            <div className="leading-tight">
-              <div className="font-display text-[11.5px] font-semibold text-primary capitalize">
+          <div className="flex items-center gap-2 min-w-0">
+            {(() => {
+              const isDefault = effective === "tools" && tool === "select" && !selectedClip;
+              if (isDefault) return null;
+              return (
+                <button
+                  onClick={() => {
+                    if (tool !== "select") setTool("select");
+                    if (selectedClip) onClearSelection();
+                    if (effective !== "tools") setDeck("tools");
+                  }}
+                  className="h-8 px-3 rounded-full bg-primary text-on-primary flex items-center gap-1.5 shadow-[var(--shadow-glass)] active:scale-95 shrink-0"
+                  aria-label="Return"
+                >
+                  <ArrowLeft className="size-3 text-lime" />
+                  <span className="text-[9px] font-mono font-semibold tracking-wider">RETURN</span>
+                </button>
+              );
+            })()}
+            <div className="leading-tight min-w-0">
+              <div className="font-display text-[11.5px] font-semibold text-primary capitalize truncate">
                 {effective}
               </div>
-              <div className="text-[8.5px] font-mono text-on-surface-variant uppercase tracking-wider">
-                {selectedClip ?? (isNew ? "empty sequence" : "no selection")}
+              <div className="text-[8.5px] font-mono text-on-surface-variant uppercase tracking-wider truncate">
+                {tool !== "select" ? `${tool} mode` : selectedClip ?? (isNew ? "empty sequence" : "no selection")}
               </div>
             </div>
           </div>
