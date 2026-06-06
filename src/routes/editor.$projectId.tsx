@@ -7,6 +7,8 @@ import {
   Maximize2, Minimize2, Mic, Send, Sparkles, Gauge, PenTool,
   Captions, FileVideo, Palette, Image as ImageIcon, Wand, ChevronUp,
   Activity, GitBranch, Layers, ArrowLeftRight, Diamond, Hand,
+  Rewind, Snowflake, Shuffle, Copy, Trash2, AudioWaveform, Frame,
+  Square, Circle as CircleIcon, AlignLeft, AlignCenter, AlignRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -36,7 +38,19 @@ type InterfaceId =
   | "keyframes"
   | "color-curves"
   | "speed-curve"
-  | "mask-pen";
+  | "mask-pen"
+  | "text-properties"
+  | "split-precision"
+  | "speed-constant"
+  | "reverse"
+  | "freeze"
+  | "transition"
+  | "duplicate-delete"
+  | "extract-audio"
+  | "vo"
+  | "captions"
+  | "canvas"
+  | "mask-precision";
 
 type Tool =
   | { id: string; label: string; icon: LucideIcon; kind: "cursor"; cursor: CursorMode }
@@ -49,10 +63,15 @@ const CATEGORIES: Category[] = [
   {
     id: "edit", label: "Edit", icon: Scissors,
     tools: [
-      { id: "split", label: "Split", icon: Scissors, kind: "cursor", cursor: "split" },
+      { id: "split", label: "Split", icon: Scissors, kind: "interface", interfaceId: "split-precision" },
       { id: "trim", label: "Trim", icon: ArrowLeftRight, kind: "cursor", cursor: "trim" },
       { id: "hand", label: "Hand", icon: Hand, kind: "cursor", cursor: "hand" },
-      { id: "speed", label: "Speed Curve", icon: Gauge, kind: "interface", interfaceId: "speed-curve" },
+      { id: "speed-c", label: "Speed", icon: Gauge, kind: "interface", interfaceId: "speed-constant" },
+      { id: "speed", label: "Speed Curve", icon: Activity, kind: "interface", interfaceId: "speed-curve" },
+      { id: "reverse", label: "Reverse", icon: Rewind, kind: "interface", interfaceId: "reverse" },
+      { id: "freeze", label: "Freeze", icon: Snowflake, kind: "interface", interfaceId: "freeze" },
+      { id: "transition", label: "Transition", icon: Shuffle, kind: "interface", interfaceId: "transition" },
+      { id: "dupdel", label: "Duplicate / Delete", icon: Copy, kind: "interface", interfaceId: "duplicate-delete" },
       { id: "keyframes", label: "Keyframes", icon: Diamond, kind: "interface", interfaceId: "keyframes" },
     ],
   },
@@ -60,8 +79,9 @@ const CATEGORIES: Category[] = [
     id: "audio", label: "Audio", icon: AudioLines,
     tools: [
       { id: "eq", label: "Parametric EQ", icon: Activity, kind: "interface", interfaceId: "parametric-eq" },
+      { id: "extract", label: "Extract Audio", icon: AudioWaveform, kind: "interface", interfaceId: "extract-audio" },
+      { id: "vo", label: "VO Record", icon: Mic, kind: "interface", interfaceId: "vo" },
       { id: "denoise", label: "DeNoise", icon: Wand, kind: "action" },
-      { id: "vo", label: "VO Record", icon: Mic, kind: "action" },
     ],
   },
   {
@@ -69,19 +89,22 @@ const CATEGORIES: Category[] = [
     tools: [
       { id: "curves", label: "Curves", icon: GitBranch, kind: "interface", interfaceId: "color-curves" },
       { id: "luts", label: "LUTs", icon: Layers, kind: "action" },
+      { id: "canvas", label: "Canvas", icon: Frame, kind: "interface", interfaceId: "canvas" },
     ],
   },
   {
     id: "text", label: "Text", icon: Type,
     tools: [
       { id: "add-text", label: "Add Text", icon: Type, kind: "cursor", cursor: "text" },
-      { id: "captions", label: "Auto Captions", icon: Captions, kind: "action" },
+      { id: "text-props", label: "Text Properties", icon: Sliders, kind: "interface", interfaceId: "text-properties" },
+      { id: "captions", label: "Auto Captions", icon: Captions, kind: "interface", interfaceId: "captions" },
     ],
   },
   {
     id: "effects", label: "Effects", icon: Sparkles,
     tools: [
-      { id: "mask", label: "Mask Pen", icon: PenTool, kind: "interface", interfaceId: "mask-pen" },
+      { id: "mask-pen", label: "Mask Pen", icon: PenTool, kind: "interface", interfaceId: "mask-pen" },
+      { id: "mask-prec", label: "Precision Mask", icon: CircleIcon, kind: "interface", interfaceId: "mask-precision" },
       { id: "blend", label: "Blend", icon: Layers, kind: "action" },
     ],
   },
@@ -154,26 +177,27 @@ function EditorPage() {
         />
       )}
 
+      {/* Transport (Z3) — always visible */}
+      <Transport
+        playing={playing}
+        onToggle={() => setPlaying((p) => !p)}
+        time={time}
+        onSeek={setTime}
+        fullscreen={fullscreen}
+        onExitFullscreen={() => setFullscreen(false)}
+        isNew={isNew}
+      />
+
       <div className="flex-1 min-h-0 flex flex-col">
+        {/* Z4 timeline — hidden when an interface owns the canvas */}
         {!inInterface && (
-          <>
-            <Transport
-              playing={playing}
-              onToggle={() => setPlaying((p) => !p)}
-              time={time}
-              onSeek={setTime}
-              fullscreen={fullscreen}
-              onExitFullscreen={() => setFullscreen(false)}
-              isNew={isNew}
-            />
-            <TimelineBlock
-              time={time}
-              selected={selectedClip}
-              onSelect={handleSelectClip}
-              cursor={cursor}
-              isNew={isNew}
-            />
-          </>
+          <TimelineBlock
+            time={time}
+            selected={selectedClip}
+            onSelect={handleSelectClip}
+            cursor={cursor}
+            isNew={isNew}
+          />
         )}
 
         {/* Z5 (or merged Z4+Z5 when interface) */}
@@ -602,7 +626,7 @@ function Zone5({
   );
 }
 
-/* ── Default deck: AI starter bar + tool category strip ── */
+/* ── Default deck: compact horizontal strip (height ≈ transport) ── */
 
 function DefaultDeck({
   onOpenAgent, onOpenCategory, agentBackground, isNew,
@@ -613,38 +637,30 @@ function DefaultDeck({
   isNew: boolean;
 }) {
   return (
-    <div className="p-3 space-y-2.5">
-      {/* AI agent starter — full-width invitation bar */}
+    <div className="px-2 py-1.5 flex items-center gap-1.5 h-12">
       <button
         onClick={onOpenAgent}
-        className="w-full h-12 rounded-2xl bg-primary text-on-primary px-3 flex items-center gap-2.5 active:scale-[0.99] transition-transform shadow-[var(--shadow-glass)]"
+        className="shrink-0 h-9 px-2.5 rounded-full bg-primary text-on-primary flex items-center gap-1.5 active:scale-95 transition-transform"
       >
-        <div className="size-8 rounded-full bg-lime grid place-items-center shrink-0">
-          <SparkIcon dark />
+        <div className="size-5 rounded-full bg-lime grid place-items-center">
+          <SparkIcon dark small />
         </div>
-        <div className="flex-1 text-left leading-tight min-w-0">
-          <div className="text-[11px] font-display font-semibold text-lime">Ask the agent</div>
-          <div className="text-[9px] font-mono text-lime/70 truncate">
-            {agentBackground ? "working in background · tap to resume" : "describe an edit in natural language"}
-          </div>
-        </div>
+        <span className="text-[10px] font-mono font-semibold tracking-wider text-lime">AGENT</span>
         {agentBackground && (
-          <span className="size-2 rounded-full bg-lime animate-pulse shadow-[var(--shadow-lime)]" />
+          <span className="size-1.5 rounded-full bg-lime animate-pulse" />
         )}
-        <ChevronUp className="size-3.5 text-lime/70" />
       </button>
-
-      {/* Category strip */}
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="w-px h-5 bg-outline-variant/50 shrink-0" />
+      <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
         {CATEGORIES.map((c) => (
           <button
             key={c.id}
             disabled={isNew && c.id !== "edit"}
             onClick={() => onOpenCategory(c.id)}
-            className="h-14 rounded-2xl glass flex flex-col items-center justify-center gap-1 text-primary active:scale-95 transition-transform disabled:opacity-40"
+            className="shrink-0 h-9 px-3 rounded-full glass text-primary flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-40"
           >
-            <c.icon className="size-4" />
-            <span className="text-[9px] font-semibold">{c.label}</span>
+            <c.icon className="size-3.5" />
+            <span className="text-[10px] font-semibold">{c.label}</span>
           </button>
         ))}
       </div>
@@ -652,31 +668,35 @@ function DefaultDeck({
   );
 }
 
-/* ── Category deck — tools list for the picked category, with Return ── */
+/* ── Category deck — linear horizontal scrollable tool strip ── */
 
 function CategoryDeck({
   category, onReturn, onPickTool,
 }: { category: Category; onReturn: () => void; onPickTool: (t: Tool) => void }) {
   return (
-    <div className="p-3 space-y-2.5">
-      <DeckHeader
-        onReturn={onReturn}
-        icon={category.icon}
-        title={category.label}
-        subtitle={`${category.tools.length} tools`}
-      />
-      <div className="grid grid-cols-3 gap-1.5">
+    <div className="px-2 py-1.5 flex items-center gap-1.5 h-12">
+      <button
+        onClick={onReturn}
+        className="shrink-0 size-9 rounded-full bg-primary text-on-primary grid place-items-center active:scale-95"
+        aria-label="Return"
+      >
+        <ArrowLeft className="size-3.5 text-lime" />
+      </button>
+      <div className="shrink-0 flex items-center gap-1.5 pr-1.5 border-r border-outline-variant/50 h-7">
+        <category.icon className="size-3.5 text-primary" />
+        <span className="text-[10px] font-mono font-semibold tracking-wider text-primary uppercase">
+          {category.label}
+        </span>
+      </div>
+      <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
         {category.tools.map((t) => (
           <button
             key={t.id}
             onClick={() => onPickTool(t)}
-            className="h-16 rounded-2xl glass flex flex-col items-center justify-center gap-1 text-primary active:scale-95 transition-transform"
+            className="shrink-0 h-9 px-3 rounded-full glass text-primary flex items-center gap-1.5 active:scale-95 transition-transform"
           >
-            <t.icon className="size-4" />
-            <span className="text-[9.5px] font-semibold text-center px-1">{t.label}</span>
-            <span className="text-[7.5px] font-mono text-on-surface-variant uppercase tracking-wider">
-              {t.kind}
-            </span>
+            <t.icon className="size-3.5" />
+            <span className="text-[10px] font-semibold whitespace-nowrap">{t.label}</span>
           </button>
         ))}
       </div>
@@ -805,8 +825,20 @@ function InterfaceCanvas({
     "parametric-eq": { title: "Parametric EQ", subtitle: "6-band shaping", icon: Activity },
     "keyframes": { title: "Keyframe Editor", subtitle: "animation curves", icon: Diamond },
     "color-curves": { title: "Color Curves", subtitle: "RGB · luma", icon: GitBranch },
-    "speed-curve": { title: "Speed Curve", subtitle: "rate stretch", icon: Gauge },
+    "speed-curve": { title: "Speed Curve", subtitle: "rate ramp", icon: Activity },
     "mask-pen": { title: "Mask Pen", subtitle: "vector mask", icon: PenTool },
+    "text-properties": { title: "Text Properties", subtitle: "type · style · align", icon: Type },
+    "split-precision": { title: "Split / Cut", subtitle: "frame-accurate", icon: Scissors },
+    "speed-constant": { title: "Speed", subtitle: "time remap", icon: Gauge },
+    "reverse": { title: "Reverse", subtitle: "temporal inverse", icon: Rewind },
+    "freeze": { title: "Freeze Frame", subtitle: "hold sequence", icon: Snowflake },
+    "transition": { title: "Transition", subtitle: "junction config", icon: Shuffle },
+    "duplicate-delete": { title: "Duplicate / Delete", subtitle: "clip clipboard", icon: Copy },
+    "extract-audio": { title: "Extract Audio", subtitle: "demux", icon: AudioWaveform },
+    "vo": { title: "Voice Over", subtitle: "live capture", icon: Mic },
+    "captions": { title: "Auto Captions", subtitle: "AI speech-to-text", icon: Captions },
+    "canvas": { title: "Canvas", subtitle: "global sequence", icon: Frame },
+    "mask-precision": { title: "Precision Mask", subtitle: "shape · feather", icon: CircleIcon },
   };
   const m = meta[id];
 
@@ -839,7 +871,20 @@ function InterfaceCanvas({
         {id === "color-curves" && <CurvesStage />}
         {id === "speed-curve" && <SpeedCurveStage />}
         {id === "mask-pen" && <MaskPenStage />}
+        {id === "text-properties" && <TextPropertiesStage />}
+        {id === "split-precision" && <SplitStage />}
+        {id === "speed-constant" && <SpeedConstantStage />}
+        {id === "reverse" && <ReverseStage />}
+        {id === "freeze" && <FreezeStage />}
+        {id === "transition" && <TransitionStage />}
+        {id === "duplicate-delete" && <DuplicateDeleteStage />}
+        {id === "extract-audio" && <ExtractAudioStage />}
+        {id === "vo" && <VoStage />}
+        {id === "captions" && <CaptionsStage />}
+        {id === "canvas" && <CanvasStage />}
+        {id === "mask-precision" && <MaskPrecisionStage />}
       </div>
+
 
       {/* Return button — bottom-left "escapement" */}
       <div className="px-3 pb-3 pt-2 border-t border-outline-variant/40 flex items-center justify-between">
@@ -992,7 +1037,305 @@ function MaskPenStage() {
   );
 }
 
-/* ── Agent chat (full interface) ── */
+/* ── 12 additional tool stages (concept-driven, adaptive) ── */
+
+function StageSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-[8.5px] font-mono uppercase tracking-wider text-on-surface-variant mb-1.5 px-0.5">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function SegRow<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { id: T; label: string; icon?: LucideIcon }[] }) {
+  return (
+    <div className="flex gap-1 glass rounded-full p-1">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          onClick={() => onChange(o.id)}
+          className={`flex-1 h-8 rounded-full text-[10px] font-mono font-semibold flex items-center justify-center gap-1.5 transition-colors ${value === o.id ? "bg-primary text-on-primary" : "text-primary"}`}
+        >
+          {o.icon && <o.icon className="size-3.5" />}
+          <span className="truncate">{o.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CheckRow({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
+  return (
+    <button onClick={onToggle} className="w-full glass rounded-xl h-10 px-3 flex items-center gap-2.5 active:scale-[0.99]">
+      <span className={`size-4 rounded-md grid place-items-center ${checked ? "bg-lime text-primary" : "border border-outline-variant"}`}>
+        {checked && <span className="text-[10px] font-bold leading-none">✓</span>}
+      </span>
+      <span className="flex-1 text-left text-[11px] font-medium text-primary">{label}</span>
+    </button>
+  );
+}
+
+function TextPropertiesStage() {
+  const [text, setText] = useState("Hello World");
+  const [align, setAlign] = useState<"l" | "c" | "r">("c");
+  const [fill, setFill] = useState(true);
+  const [stroke, setStroke] = useState(false);
+  return (
+    <div className="space-y-3">
+      <StageSection title="Content">
+        <input value={text} onChange={(e) => setText(e.target.value)} className="w-full h-10 rounded-xl glass px-3 text-[12px] text-primary outline-none" />
+      </StageSection>
+      <StageSection title="Font">
+        <button className="w-full h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>Robust Sans · Bold</span><ChevronDown className="size-3.5" />
+        </button>
+      </StageSection>
+      <SliderRow label="Size" value="36 pt" v={50} onChange={() => {}} min={12} max={72} />
+      <StageSection title="Alignment">
+        <SegRow value={align} onChange={setAlign} options={[
+          { id: "l", label: "Left", icon: AlignLeft },
+          { id: "c", label: "Center", icon: AlignCenter },
+          { id: "r", label: "Right", icon: AlignRight },
+        ]} />
+      </StageSection>
+      <div className="space-y-1.5">
+        <CheckRow label="Fill" checked={fill} onToggle={() => setFill(!fill)} />
+        <CheckRow label="Stroke" checked={stroke} onToggle={() => setStroke(!stroke)} />
+      </div>
+    </div>
+  );
+}
+
+function SplitStage() {
+  const [pos, setPos] = useState(50);
+  return (
+    <div className="space-y-3">
+      <div className="glass rounded-2xl p-3 flex items-center justify-between">
+        <div>
+          <div className="text-[8.5px] font-mono uppercase tracking-wider text-on-surface-variant">Playhead</div>
+          <div className="font-display text-[18px] font-bold text-primary tabular">00:04.12</div>
+        </div>
+        <button className="size-14 rounded-full bg-primary text-on-primary grid place-items-center shadow-[var(--shadow-glass-lg)] active:scale-95">
+          <Scissors className="size-5 text-lime" />
+        </button>
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {["-5f", "-1f", "+1f", "+5f"].map((l) => (
+          <button key={l} className="h-10 rounded-xl glass text-primary text-[10.5px] font-mono font-semibold">{l}</button>
+        ))}
+      </div>
+      <StageSection title="Precision scrub">
+        <SliderRow label="Frame" value={`${Math.floor(pos)}f`} v={pos} onChange={setPos} min={0} max={120} />
+      </StageSection>
+    </div>
+  );
+}
+
+function SpeedConstantStage() {
+  const [mode, setMode] = useState<"const" | "ramp">("const");
+  const [pitch, setPitch] = useState(true);
+  return (
+    <div className="space-y-3">
+      <SegRow value={mode} onChange={setMode} options={[{ id: "const", label: "Constant" }, { id: "ramp", label: "Ramp" }]} />
+      <SliderRow label="Speed" value="1.0×" v={50} onChange={() => {}} min={0} max={100} />
+      <CheckRow label="Maintain audio pitch" checked={pitch} onToggle={() => setPitch(!pitch)} />
+      <div className="glass rounded-xl px-3 h-10 flex items-center justify-between">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-on-surface-variant">New duration</span>
+        <span className="font-display text-[12px] font-semibold text-primary tabular">00:15.00</span>
+      </div>
+    </div>
+  );
+}
+
+function ReverseStage() {
+  const [v, setV] = useState(true);
+  const [a, setA] = useState(true);
+  return (
+    <div className="space-y-3">
+      <CheckRow label="Reverse video stream" checked={v} onToggle={() => setV(!v)} />
+      <CheckRow label="Reverse audio waveform" checked={a} onToggle={() => setA(!a)} />
+      <StageSection title="Processing cache · 75%">
+        <div className="h-2 rounded-full bg-surface-container overflow-hidden">
+          <div className="h-full bg-lime" style={{ width: "75%" }} />
+        </div>
+      </StageSection>
+      <button className="w-full h-11 rounded-full bg-primary text-on-primary text-[11px] font-mono font-semibold tracking-wider">APPLY</button>
+    </div>
+  );
+}
+
+function FreezeStage() {
+  const [overlay, setOverlay] = useState(false);
+  return (
+    <div className="space-y-3">
+      <div className="glass rounded-2xl p-3">
+        <div className="text-[8.5px] font-mono uppercase tracking-wider text-on-surface-variant">Freeze at</div>
+        <div className="font-display text-[22px] font-bold text-primary tabular">00:12.18</div>
+      </div>
+      <SliderRow label="Duration" value="3.0 s" v={30} onChange={() => {}} min={5} max={100} />
+      <CheckRow label="Insert & split sequence" checked={!overlay} onToggle={() => setOverlay(false)} />
+      <CheckRow label="Overlay as static layer (V2)" checked={overlay} onToggle={() => setOverlay(true)} />
+    </div>
+  );
+}
+
+function TransitionStage() {
+  const [style, setStyle] = useState<"diss" | "slide" | "wipe">("diss");
+  const [align, setAlign] = useState<"start" | "center" | "end">("center");
+  return (
+    <div className="space-y-3">
+      <StageSection title="Style">
+        <SegRow value={style} onChange={setStyle} options={[
+          { id: "diss", label: "Dissolve" }, { id: "slide", label: "Slide" }, { id: "wipe", label: "Wipe" },
+        ]} />
+      </StageSection>
+      <SliderRow label="Duration" value="30 frames" v={50} onChange={() => {}} min={0} max={100} />
+      <StageSection title="Alignment">
+        <SegRow value={align} onChange={setAlign} options={[
+          { id: "start", label: "Start" }, { id: "center", label: "Center" }, { id: "end", label: "End" },
+        ]} />
+      </StageSection>
+    </div>
+  );
+}
+
+function DuplicateDeleteStage() {
+  return (
+    <div className="space-y-3">
+      <StageSection title="Duplicate">
+        <div className="grid grid-cols-3 gap-1.5">
+          {[{ l: "Clip", i: Copy }, { l: "Track", i: Layers }, { l: "Nest", i: Frame }].map(({ l, i: I }) => (
+            <button key={l} className="h-14 rounded-2xl glass flex flex-col items-center justify-center gap-1 text-primary">
+              <I className="size-4" /><span className="text-[10px] font-semibold">{l}</span>
+            </button>
+          ))}
+        </div>
+      </StageSection>
+      <StageSection title="Delete">
+        <div className="space-y-1.5">
+          <button className="w-full h-11 rounded-xl glass text-primary text-[11px] font-mono font-semibold flex items-center justify-center gap-2">
+            <Trash2 className="size-3.5" /> Lift · leave gap
+          </button>
+          <button className="w-full h-11 rounded-xl bg-error text-on-error text-[11px] font-mono font-semibold flex items-center justify-center gap-2">
+            <Trash2 className="size-3.5" /> Ripple delete · close gap
+          </button>
+        </div>
+      </StageSection>
+    </div>
+  );
+}
+
+function ExtractAudioStage() {
+  const [fmt, setFmt] = useState<"stereo" | "mono">("stereo");
+  const [mute, setMute] = useState(true);
+  const [newTrack, setNewTrack] = useState(true);
+  return (
+    <div className="space-y-3">
+      <StageSection title="Output">
+        <SegRow value={fmt} onChange={setFmt} options={[
+          { id: "stereo", label: "Stereo mix" }, { id: "mono", label: "Dual mono" },
+        ]} />
+      </StageSection>
+      <CheckRow label="Mute original video audio" checked={mute} onToggle={() => setMute(!mute)} />
+      <CheckRow label="Place on new track (A2)" checked={newTrack} onToggle={() => setNewTrack(!newTrack)} />
+      <button className="w-full h-11 rounded-full bg-primary text-on-primary text-[11px] font-mono font-semibold tracking-wider">EXTRACT</button>
+    </div>
+  );
+}
+
+function VoStage() {
+  return (
+    <div className="space-y-3">
+      <StageSection title="Input source">
+        <button className="w-full h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>Built-in mic · mono</span><ChevronDown className="size-3.5" />
+        </button>
+      </StageSection>
+      <SliderRow label="Gain" value="+4 dB" v={60} onChange={() => {}} min={0} max={100} />
+      <StageSection title="Level · -6 dB">
+        <div className="h-3 rounded-full bg-surface-container overflow-hidden flex gap-px p-0.5">
+          {Array.from({ length: 24 }).map((_, i) => (
+            <div key={i} className={`flex-1 rounded-sm ${i < 18 ? (i < 14 ? "bg-lime" : "bg-secondary") : "bg-outline-variant/30"}`} />
+          ))}
+        </div>
+      </StageSection>
+      <button className="w-full h-14 rounded-full bg-error text-on-error font-mono font-bold tracking-wider flex items-center justify-center gap-2 active:scale-95">
+        <span className="size-3 rounded-full bg-on-error" /> TAP TO RECORD
+      </button>
+    </div>
+  );
+}
+
+function CaptionsStage() {
+  const [style, setStyle] = useState<"single" | "double">("single");
+  return (
+    <div className="space-y-3">
+      <StageSection title="Source">
+        <button className="w-full h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>A1 · Dialogue</span><ChevronDown className="size-3.5" />
+        </button>
+      </StageSection>
+      <StageSection title="Language">
+        <button className="w-full h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>English (US)</span><ChevronDown className="size-3.5" />
+        </button>
+      </StageSection>
+      <SliderRow label="Max characters" value="22" v={22} onChange={() => {}} min={5} max={40} />
+      <StageSection title="Style">
+        <SegRow value={style} onChange={setStyle} options={[
+          { id: "single", label: "Single word" }, { id: "double", label: "Double line" },
+        ]} />
+      </StageSection>
+      <button className="w-full h-11 rounded-full bg-primary text-on-primary text-[11px] font-mono font-semibold tracking-wider">GENERATE</button>
+    </div>
+  );
+}
+
+function CanvasStage() {
+  const [ar, setAr] = useState<"v" | "s" | "h">("v");
+  const [fill, setFill] = useState<"blur" | "solid">("blur");
+  return (
+    <div className="space-y-3">
+      <StageSection title="Aspect ratio">
+        <SegRow value={ar} onChange={setAr} options={[
+          { id: "v", label: "9:16" }, { id: "s", label: "1:1" }, { id: "h", label: "16:9" },
+        ]} />
+      </StageSection>
+      <StageSection title="Empty border fill">
+        <SegRow value={fill} onChange={setFill} options={[
+          { id: "blur", label: "Gaussian" }, { id: "solid", label: "Solid black" },
+        ]} />
+      </StageSection>
+      <div className="grid grid-cols-2 gap-1.5">
+        <button className="h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>24 fps</span><ChevronDown className="size-3.5" />
+        </button>
+        <button className="h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>Fit</span><ChevronDown className="size-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MaskPrecisionStage() {
+  const [shape, setShape] = useState<"rect" | "ellipse" | "pen">("rect");
+  return (
+    <div className="space-y-3">
+      <StageSection title="Shape">
+        <SegRow value={shape} onChange={setShape} options={[
+          { id: "rect", label: "Rect", icon: Square },
+          { id: "ellipse", label: "Ellipse", icon: CircleIcon },
+          { id: "pen", label: "Pen", icon: PenTool },
+        ]} />
+      </StageSection>
+      <SliderRow label="Feathering" value="35 px" v={35} onChange={() => {}} min={0} max={100} />
+      <SliderRow label="Expansion" value="0 px" v={50} onChange={() => {}} min={0} max={100} />
+    </div>
+  );
+}
+
 
 function AgentChat() {
   const [text, setText] = useState("");
@@ -1100,10 +1443,11 @@ function DeckHeader({
 
 /* ──────────────────────── Icons + shared ──────────────────────── */
 
-function SparkIcon({ dark }: { dark?: boolean }) {
+function SparkIcon({ dark, small }: { dark?: boolean; small?: boolean }) {
   const c = dark ? "#00180d" : "#c5e1a5";
+  const size = small ? "size-3" : "size-5";
   return (
-    <svg viewBox="0 0 24 24" className="size-5" fill="none">
+    <svg viewBox="0 0 24 24" className={size} fill="none">
       <path d="M12 3v6M12 15v6M3 12h6M15 12h6" stroke={c} strokeWidth="1.6" strokeLinecap="round" />
       <path d="M6 6l3 3M15 15l3 3M6 18l3-3M15 9l3-3" stroke={c} strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
       <circle cx="12" cy="12" r="1.8" fill={c} />
