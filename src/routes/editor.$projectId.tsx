@@ -38,7 +38,19 @@ type InterfaceId =
   | "keyframes"
   | "color-curves"
   | "speed-curve"
-  | "mask-pen";
+  | "mask-pen"
+  | "text-properties"
+  | "split-precision"
+  | "speed-constant"
+  | "reverse"
+  | "freeze"
+  | "transition"
+  | "duplicate-delete"
+  | "extract-audio"
+  | "vo"
+  | "captions"
+  | "canvas"
+  | "mask-precision";
 
 type Tool =
   | { id: string; label: string; icon: LucideIcon; kind: "cursor"; cursor: CursorMode }
@@ -51,10 +63,15 @@ const CATEGORIES: Category[] = [
   {
     id: "edit", label: "Edit", icon: Scissors,
     tools: [
-      { id: "split", label: "Split", icon: Scissors, kind: "cursor", cursor: "split" },
+      { id: "split", label: "Split", icon: Scissors, kind: "interface", interfaceId: "split-precision" },
       { id: "trim", label: "Trim", icon: ArrowLeftRight, kind: "cursor", cursor: "trim" },
       { id: "hand", label: "Hand", icon: Hand, kind: "cursor", cursor: "hand" },
-      { id: "speed", label: "Speed Curve", icon: Gauge, kind: "interface", interfaceId: "speed-curve" },
+      { id: "speed-c", label: "Speed", icon: Gauge, kind: "interface", interfaceId: "speed-constant" },
+      { id: "speed", label: "Speed Curve", icon: Activity, kind: "interface", interfaceId: "speed-curve" },
+      { id: "reverse", label: "Reverse", icon: Rewind, kind: "interface", interfaceId: "reverse" },
+      { id: "freeze", label: "Freeze", icon: Snowflake, kind: "interface", interfaceId: "freeze" },
+      { id: "transition", label: "Transition", icon: Shuffle, kind: "interface", interfaceId: "transition" },
+      { id: "dupdel", label: "Duplicate / Delete", icon: Copy, kind: "interface", interfaceId: "duplicate-delete" },
       { id: "keyframes", label: "Keyframes", icon: Diamond, kind: "interface", interfaceId: "keyframes" },
     ],
   },
@@ -62,8 +79,9 @@ const CATEGORIES: Category[] = [
     id: "audio", label: "Audio", icon: AudioLines,
     tools: [
       { id: "eq", label: "Parametric EQ", icon: Activity, kind: "interface", interfaceId: "parametric-eq" },
+      { id: "extract", label: "Extract Audio", icon: AudioWaveform, kind: "interface", interfaceId: "extract-audio" },
+      { id: "vo", label: "VO Record", icon: Mic, kind: "interface", interfaceId: "vo" },
       { id: "denoise", label: "DeNoise", icon: Wand, kind: "action" },
-      { id: "vo", label: "VO Record", icon: Mic, kind: "action" },
     ],
   },
   {
@@ -71,19 +89,22 @@ const CATEGORIES: Category[] = [
     tools: [
       { id: "curves", label: "Curves", icon: GitBranch, kind: "interface", interfaceId: "color-curves" },
       { id: "luts", label: "LUTs", icon: Layers, kind: "action" },
+      { id: "canvas", label: "Canvas", icon: Frame, kind: "interface", interfaceId: "canvas" },
     ],
   },
   {
     id: "text", label: "Text", icon: Type,
     tools: [
       { id: "add-text", label: "Add Text", icon: Type, kind: "cursor", cursor: "text" },
-      { id: "captions", label: "Auto Captions", icon: Captions, kind: "action" },
+      { id: "text-props", label: "Text Properties", icon: Sliders, kind: "interface", interfaceId: "text-properties" },
+      { id: "captions", label: "Auto Captions", icon: Captions, kind: "interface", interfaceId: "captions" },
     ],
   },
   {
     id: "effects", label: "Effects", icon: Sparkles,
     tools: [
-      { id: "mask", label: "Mask Pen", icon: PenTool, kind: "interface", interfaceId: "mask-pen" },
+      { id: "mask-pen", label: "Mask Pen", icon: PenTool, kind: "interface", interfaceId: "mask-pen" },
+      { id: "mask-prec", label: "Precision Mask", icon: CircleIcon, kind: "interface", interfaceId: "mask-precision" },
       { id: "blend", label: "Blend", icon: Layers, kind: "action" },
     ],
   },
