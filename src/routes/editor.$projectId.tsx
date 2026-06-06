@@ -177,26 +177,27 @@ function EditorPage() {
         />
       )}
 
+      {/* Transport (Z3) — always visible */}
+      <Transport
+        playing={playing}
+        onToggle={() => setPlaying((p) => !p)}
+        time={time}
+        onSeek={setTime}
+        fullscreen={fullscreen}
+        onExitFullscreen={() => setFullscreen(false)}
+        isNew={isNew}
+      />
+
       <div className="flex-1 min-h-0 flex flex-col">
+        {/* Z4 timeline — hidden when an interface owns the canvas */}
         {!inInterface && (
-          <>
-            <Transport
-              playing={playing}
-              onToggle={() => setPlaying((p) => !p)}
-              time={time}
-              onSeek={setTime}
-              fullscreen={fullscreen}
-              onExitFullscreen={() => setFullscreen(false)}
-              isNew={isNew}
-            />
-            <TimelineBlock
-              time={time}
-              selected={selectedClip}
-              onSelect={handleSelectClip}
-              cursor={cursor}
-              isNew={isNew}
-            />
-          </>
+          <TimelineBlock
+            time={time}
+            selected={selectedClip}
+            onSelect={handleSelectClip}
+            cursor={cursor}
+            isNew={isNew}
+          />
         )}
 
         {/* Z5 (or merged Z4+Z5 when interface) */}
