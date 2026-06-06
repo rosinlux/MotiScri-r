@@ -1120,10 +1120,11 @@ function DeckHeader({
 
 /* ──────────────────────── Icons + shared ──────────────────────── */
 
-function SparkIcon({ dark }: { dark?: boolean }) {
+function SparkIcon({ dark, small }: { dark?: boolean; small?: boolean }) {
   const c = dark ? "#00180d" : "#c5e1a5";
+  const size = small ? "size-3" : "size-5";
   return (
-    <svg viewBox="0 0 24 24" className="size-5" fill="none">
+    <svg viewBox="0 0 24 24" className={size} fill="none">
       <path d="M12 3v6M12 15v6M3 12h6M15 12h6" stroke={c} strokeWidth="1.6" strokeLinecap="round" />
       <path d="M6 6l3 3M15 15l3 3M6 18l3-3M15 9l3-3" stroke={c} strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
       <circle cx="12" cy="12" r="1.8" fill={c} />
