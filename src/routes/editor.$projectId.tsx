@@ -825,8 +825,20 @@ function InterfaceCanvas({
     "parametric-eq": { title: "Parametric EQ", subtitle: "6-band shaping", icon: Activity },
     "keyframes": { title: "Keyframe Editor", subtitle: "animation curves", icon: Diamond },
     "color-curves": { title: "Color Curves", subtitle: "RGB · luma", icon: GitBranch },
-    "speed-curve": { title: "Speed Curve", subtitle: "rate stretch", icon: Gauge },
+    "speed-curve": { title: "Speed Curve", subtitle: "rate ramp", icon: Activity },
     "mask-pen": { title: "Mask Pen", subtitle: "vector mask", icon: PenTool },
+    "text-properties": { title: "Text Properties", subtitle: "type · style · align", icon: Type },
+    "split-precision": { title: "Split / Cut", subtitle: "frame-accurate", icon: Scissors },
+    "speed-constant": { title: "Speed", subtitle: "time remap", icon: Gauge },
+    "reverse": { title: "Reverse", subtitle: "temporal inverse", icon: Rewind },
+    "freeze": { title: "Freeze Frame", subtitle: "hold sequence", icon: Snowflake },
+    "transition": { title: "Transition", subtitle: "junction config", icon: Shuffle },
+    "duplicate-delete": { title: "Duplicate / Delete", subtitle: "clip clipboard", icon: Copy },
+    "extract-audio": { title: "Extract Audio", subtitle: "demux", icon: AudioWaveform },
+    "vo": { title: "Voice Over", subtitle: "live capture", icon: Mic },
+    "captions": { title: "Auto Captions", subtitle: "AI speech-to-text", icon: Captions },
+    "canvas": { title: "Canvas", subtitle: "global sequence", icon: Frame },
+    "mask-precision": { title: "Precision Mask", subtitle: "shape · feather", icon: CircleIcon },
   };
   const m = meta[id];
 
@@ -859,7 +871,20 @@ function InterfaceCanvas({
         {id === "color-curves" && <CurvesStage />}
         {id === "speed-curve" && <SpeedCurveStage />}
         {id === "mask-pen" && <MaskPenStage />}
+        {id === "text-properties" && <TextPropertiesStage />}
+        {id === "split-precision" && <SplitStage />}
+        {id === "speed-constant" && <SpeedConstantStage />}
+        {id === "reverse" && <ReverseStage />}
+        {id === "freeze" && <FreezeStage />}
+        {id === "transition" && <TransitionStage />}
+        {id === "duplicate-delete" && <DuplicateDeleteStage />}
+        {id === "extract-audio" && <ExtractAudioStage />}
+        {id === "vo" && <VoStage />}
+        {id === "captions" && <CaptionsStage />}
+        {id === "canvas" && <CanvasStage />}
+        {id === "mask-precision" && <MaskPrecisionStage />}
       </div>
+
 
       {/* Return button — bottom-left "escapement" */}
       <div className="px-3 pb-3 pt-2 border-t border-outline-variant/40 flex items-center justify-between">
