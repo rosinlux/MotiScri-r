@@ -626,7 +626,7 @@ function Zone5({
   );
 }
 
-/* ── Default deck: AI starter bar + tool category strip ── */
+/* ── Default deck: compact horizontal strip (height ≈ transport) ── */
 
 function DefaultDeck({
   onOpenAgent, onOpenCategory, agentBackground, isNew,
@@ -637,38 +637,30 @@ function DefaultDeck({
   isNew: boolean;
 }) {
   return (
-    <div className="p-3 space-y-2.5">
-      {/* AI agent starter — full-width invitation bar */}
+    <div className="px-2 py-1.5 flex items-center gap-1.5 h-12">
       <button
         onClick={onOpenAgent}
-        className="w-full h-12 rounded-2xl bg-primary text-on-primary px-3 flex items-center gap-2.5 active:scale-[0.99] transition-transform shadow-[var(--shadow-glass)]"
+        className="shrink-0 h-9 px-2.5 rounded-full bg-primary text-on-primary flex items-center gap-1.5 active:scale-95 transition-transform"
       >
-        <div className="size-8 rounded-full bg-lime grid place-items-center shrink-0">
-          <SparkIcon dark />
+        <div className="size-5 rounded-full bg-lime grid place-items-center">
+          <SparkIcon dark small />
         </div>
-        <div className="flex-1 text-left leading-tight min-w-0">
-          <div className="text-[11px] font-display font-semibold text-lime">Ask the agent</div>
-          <div className="text-[9px] font-mono text-lime/70 truncate">
-            {agentBackground ? "working in background · tap to resume" : "describe an edit in natural language"}
-          </div>
-        </div>
+        <span className="text-[10px] font-mono font-semibold tracking-wider text-lime">AGENT</span>
         {agentBackground && (
-          <span className="size-2 rounded-full bg-lime animate-pulse shadow-[var(--shadow-lime)]" />
+          <span className="size-1.5 rounded-full bg-lime animate-pulse" />
         )}
-        <ChevronUp className="size-3.5 text-lime/70" />
       </button>
-
-      {/* Category strip */}
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="w-px h-5 bg-outline-variant/50 shrink-0" />
+      <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
         {CATEGORIES.map((c) => (
           <button
             key={c.id}
             disabled={isNew && c.id !== "edit"}
             onClick={() => onOpenCategory(c.id)}
-            className="h-14 rounded-2xl glass flex flex-col items-center justify-center gap-1 text-primary active:scale-95 transition-transform disabled:opacity-40"
+            className="shrink-0 h-9 px-3 rounded-full glass text-primary flex items-center gap-1.5 active:scale-95 transition-transform disabled:opacity-40"
           >
-            <c.icon className="size-4" />
-            <span className="text-[9px] font-semibold">{c.label}</span>
+            <c.icon className="size-3.5" />
+            <span className="text-[10px] font-semibold">{c.label}</span>
           </button>
         ))}
       </div>
@@ -676,31 +668,35 @@ function DefaultDeck({
   );
 }
 
-/* ── Category deck — tools list for the picked category, with Return ── */
+/* ── Category deck — linear horizontal scrollable tool strip ── */
 
 function CategoryDeck({
   category, onReturn, onPickTool,
 }: { category: Category; onReturn: () => void; onPickTool: (t: Tool) => void }) {
   return (
-    <div className="p-3 space-y-2.5">
-      <DeckHeader
-        onReturn={onReturn}
-        icon={category.icon}
-        title={category.label}
-        subtitle={`${category.tools.length} tools`}
-      />
-      <div className="grid grid-cols-3 gap-1.5">
+    <div className="px-2 py-1.5 flex items-center gap-1.5 h-12">
+      <button
+        onClick={onReturn}
+        className="shrink-0 size-9 rounded-full bg-primary text-on-primary grid place-items-center active:scale-95"
+        aria-label="Return"
+      >
+        <ArrowLeft className="size-3.5 text-lime" />
+      </button>
+      <div className="shrink-0 flex items-center gap-1.5 pr-1.5 border-r border-outline-variant/50 h-7">
+        <category.icon className="size-3.5 text-primary" />
+        <span className="text-[10px] font-mono font-semibold tracking-wider text-primary uppercase">
+          {category.label}
+        </span>
+      </div>
+      <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
         {category.tools.map((t) => (
           <button
             key={t.id}
             onClick={() => onPickTool(t)}
-            className="h-16 rounded-2xl glass flex flex-col items-center justify-center gap-1 text-primary active:scale-95 transition-transform"
+            className="shrink-0 h-9 px-3 rounded-full glass text-primary flex items-center gap-1.5 active:scale-95 transition-transform"
           >
-            <t.icon className="size-4" />
-            <span className="text-[9.5px] font-semibold text-center px-1">{t.label}</span>
-            <span className="text-[7.5px] font-mono text-on-surface-variant uppercase tracking-wider">
-              {t.kind}
-            </span>
+            <t.icon className="size-3.5" />
+            <span className="text-[10px] font-semibold whitespace-nowrap">{t.label}</span>
           </button>
         ))}
       </div>
