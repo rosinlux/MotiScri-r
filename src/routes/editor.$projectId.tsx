@@ -7,6 +7,8 @@ import {
   Maximize2, Minimize2, Mic, Send, Sparkles, Gauge, PenTool,
   Captions, FileVideo, Palette, Image as ImageIcon, Wand, ChevronUp,
   Activity, GitBranch, Layers, ArrowLeftRight, Diamond, Hand,
+  Rewind, Snowflake, Shuffle, Copy, Trash2, AudioWaveform, Frame,
+  Square, Circle as CircleIcon, AlignLeft, AlignCenter, AlignRight,
   type LucideIcon,
 } from "lucide-react";
 
