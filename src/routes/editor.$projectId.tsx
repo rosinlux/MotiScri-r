@@ -1037,7 +1037,305 @@ function MaskPenStage() {
   );
 }
 
-/* ── Agent chat (full interface) ── */
+/* ── 12 additional tool stages (concept-driven, adaptive) ── */
+
+function StageSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-[8.5px] font-mono uppercase tracking-wider text-on-surface-variant mb-1.5 px-0.5">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function SegRow<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { id: T; label: string; icon?: LucideIcon }[] }) {
+  return (
+    <div className="flex gap-1 glass rounded-full p-1">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          onClick={() => onChange(o.id)}
+          className={`flex-1 h-8 rounded-full text-[10px] font-mono font-semibold flex items-center justify-center gap-1.5 transition-colors ${value === o.id ? "bg-primary text-on-primary" : "text-primary"}`}
+        >
+          {o.icon && <o.icon className="size-3.5" />}
+          <span className="truncate">{o.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CheckRow({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
+  return (
+    <button onClick={onToggle} className="w-full glass rounded-xl h-10 px-3 flex items-center gap-2.5 active:scale-[0.99]">
+      <span className={`size-4 rounded-md grid place-items-center ${checked ? "bg-lime text-primary" : "border border-outline-variant"}`}>
+        {checked && <span className="text-[10px] font-bold leading-none">✓</span>}
+      </span>
+      <span className="flex-1 text-left text-[11px] font-medium text-primary">{label}</span>
+    </button>
+  );
+}
+
+function TextPropertiesStage() {
+  const [text, setText] = useState("Hello World");
+  const [align, setAlign] = useState<"l" | "c" | "r">("c");
+  const [fill, setFill] = useState(true);
+  const [stroke, setStroke] = useState(false);
+  return (
+    <div className="space-y-3">
+      <StageSection title="Content">
+        <input value={text} onChange={(e) => setText(e.target.value)} className="w-full h-10 rounded-xl glass px-3 text-[12px] text-primary outline-none" />
+      </StageSection>
+      <StageSection title="Font">
+        <button className="w-full h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>Robust Sans · Bold</span><ChevronDown className="size-3.5" />
+        </button>
+      </StageSection>
+      <SliderRow label="Size" value="36 pt" v={50} onChange={() => {}} min={12} max={72} />
+      <StageSection title="Alignment">
+        <SegRow value={align} onChange={setAlign} options={[
+          { id: "l", label: "Left", icon: AlignLeft },
+          { id: "c", label: "Center", icon: AlignCenter },
+          { id: "r", label: "Right", icon: AlignRight },
+        ]} />
+      </StageSection>
+      <div className="space-y-1.5">
+        <CheckRow label="Fill" checked={fill} onToggle={() => setFill(!fill)} />
+        <CheckRow label="Stroke" checked={stroke} onToggle={() => setStroke(!stroke)} />
+      </div>
+    </div>
+  );
+}
+
+function SplitStage() {
+  const [pos, setPos] = useState(50);
+  return (
+    <div className="space-y-3">
+      <div className="glass rounded-2xl p-3 flex items-center justify-between">
+        <div>
+          <div className="text-[8.5px] font-mono uppercase tracking-wider text-on-surface-variant">Playhead</div>
+          <div className="font-display text-[18px] font-bold text-primary tabular">00:04.12</div>
+        </div>
+        <button className="size-14 rounded-full bg-primary text-on-primary grid place-items-center shadow-[var(--shadow-glass-lg)] active:scale-95">
+          <Scissors className="size-5 text-lime" />
+        </button>
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {["-5f", "-1f", "+1f", "+5f"].map((l) => (
+          <button key={l} className="h-10 rounded-xl glass text-primary text-[10.5px] font-mono font-semibold">{l}</button>
+        ))}
+      </div>
+      <StageSection title="Precision scrub">
+        <SliderRow label="Frame" value={`${Math.floor(pos)}f`} v={pos} onChange={setPos} min={0} max={120} />
+      </StageSection>
+    </div>
+  );
+}
+
+function SpeedConstantStage() {
+  const [mode, setMode] = useState<"const" | "ramp">("const");
+  const [pitch, setPitch] = useState(true);
+  return (
+    <div className="space-y-3">
+      <SegRow value={mode} onChange={setMode} options={[{ id: "const", label: "Constant" }, { id: "ramp", label: "Ramp" }]} />
+      <SliderRow label="Speed" value="1.0×" v={50} onChange={() => {}} min={0} max={100} />
+      <CheckRow label="Maintain audio pitch" checked={pitch} onToggle={() => setPitch(!pitch)} />
+      <div className="glass rounded-xl px-3 h-10 flex items-center justify-between">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-on-surface-variant">New duration</span>
+        <span className="font-display text-[12px] font-semibold text-primary tabular">00:15.00</span>
+      </div>
+    </div>
+  );
+}
+
+function ReverseStage() {
+  const [v, setV] = useState(true);
+  const [a, setA] = useState(true);
+  return (
+    <div className="space-y-3">
+      <CheckRow label="Reverse video stream" checked={v} onToggle={() => setV(!v)} />
+      <CheckRow label="Reverse audio waveform" checked={a} onToggle={() => setA(!a)} />
+      <StageSection title="Processing cache · 75%">
+        <div className="h-2 rounded-full bg-surface-container overflow-hidden">
+          <div className="h-full bg-lime" style={{ width: "75%" }} />
+        </div>
+      </StageSection>
+      <button className="w-full h-11 rounded-full bg-primary text-on-primary text-[11px] font-mono font-semibold tracking-wider">APPLY</button>
+    </div>
+  );
+}
+
+function FreezeStage() {
+  const [overlay, setOverlay] = useState(false);
+  return (
+    <div className="space-y-3">
+      <div className="glass rounded-2xl p-3">
+        <div className="text-[8.5px] font-mono uppercase tracking-wider text-on-surface-variant">Freeze at</div>
+        <div className="font-display text-[22px] font-bold text-primary tabular">00:12.18</div>
+      </div>
+      <SliderRow label="Duration" value="3.0 s" v={30} onChange={() => {}} min={5} max={100} />
+      <CheckRow label="Insert & split sequence" checked={!overlay} onToggle={() => setOverlay(false)} />
+      <CheckRow label="Overlay as static layer (V2)" checked={overlay} onToggle={() => setOverlay(true)} />
+    </div>
+  );
+}
+
+function TransitionStage() {
+  const [style, setStyle] = useState<"diss" | "slide" | "wipe">("diss");
+  const [align, setAlign] = useState<"start" | "center" | "end">("center");
+  return (
+    <div className="space-y-3">
+      <StageSection title="Style">
+        <SegRow value={style} onChange={setStyle} options={[
+          { id: "diss", label: "Dissolve" }, { id: "slide", label: "Slide" }, { id: "wipe", label: "Wipe" },
+        ]} />
+      </StageSection>
+      <SliderRow label="Duration" value="30 frames" v={50} onChange={() => {}} min={0} max={100} />
+      <StageSection title="Alignment">
+        <SegRow value={align} onChange={setAlign} options={[
+          { id: "start", label: "Start" }, { id: "center", label: "Center" }, { id: "end", label: "End" },
+        ]} />
+      </StageSection>
+    </div>
+  );
+}
+
+function DuplicateDeleteStage() {
+  return (
+    <div className="space-y-3">
+      <StageSection title="Duplicate">
+        <div className="grid grid-cols-3 gap-1.5">
+          {[{ l: "Clip", i: Copy }, { l: "Track", i: Layers }, { l: "Nest", i: Frame }].map(({ l, i: I }) => (
+            <button key={l} className="h-14 rounded-2xl glass flex flex-col items-center justify-center gap-1 text-primary">
+              <I className="size-4" /><span className="text-[10px] font-semibold">{l}</span>
+            </button>
+          ))}
+        </div>
+      </StageSection>
+      <StageSection title="Delete">
+        <div className="space-y-1.5">
+          <button className="w-full h-11 rounded-xl glass text-primary text-[11px] font-mono font-semibold flex items-center justify-center gap-2">
+            <Trash2 className="size-3.5" /> Lift · leave gap
+          </button>
+          <button className="w-full h-11 rounded-xl bg-error text-on-error text-[11px] font-mono font-semibold flex items-center justify-center gap-2">
+            <Trash2 className="size-3.5" /> Ripple delete · close gap
+          </button>
+        </div>
+      </StageSection>
+    </div>
+  );
+}
+
+function ExtractAudioStage() {
+  const [fmt, setFmt] = useState<"stereo" | "mono">("stereo");
+  const [mute, setMute] = useState(true);
+  const [newTrack, setNewTrack] = useState(true);
+  return (
+    <div className="space-y-3">
+      <StageSection title="Output">
+        <SegRow value={fmt} onChange={setFmt} options={[
+          { id: "stereo", label: "Stereo mix" }, { id: "mono", label: "Dual mono" },
+        ]} />
+      </StageSection>
+      <CheckRow label="Mute original video audio" checked={mute} onToggle={() => setMute(!mute)} />
+      <CheckRow label="Place on new track (A2)" checked={newTrack} onToggle={() => setNewTrack(!newTrack)} />
+      <button className="w-full h-11 rounded-full bg-primary text-on-primary text-[11px] font-mono font-semibold tracking-wider">EXTRACT</button>
+    </div>
+  );
+}
+
+function VoStage() {
+  return (
+    <div className="space-y-3">
+      <StageSection title="Input source">
+        <button className="w-full h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>Built-in mic · mono</span><ChevronDown className="size-3.5" />
+        </button>
+      </StageSection>
+      <SliderRow label="Gain" value="+4 dB" v={60} onChange={() => {}} min={0} max={100} />
+      <StageSection title="Level · -6 dB">
+        <div className="h-3 rounded-full bg-surface-container overflow-hidden flex gap-px p-0.5">
+          {Array.from({ length: 24 }).map((_, i) => (
+            <div key={i} className={`flex-1 rounded-sm ${i < 18 ? (i < 14 ? "bg-lime" : "bg-secondary") : "bg-outline-variant/30"}`} />
+          ))}
+        </div>
+      </StageSection>
+      <button className="w-full h-14 rounded-full bg-error text-on-error font-mono font-bold tracking-wider flex items-center justify-center gap-2 active:scale-95">
+        <span className="size-3 rounded-full bg-on-error" /> TAP TO RECORD
+      </button>
+    </div>
+  );
+}
+
+function CaptionsStage() {
+  const [style, setStyle] = useState<"single" | "double">("single");
+  return (
+    <div className="space-y-3">
+      <StageSection title="Source">
+        <button className="w-full h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>A1 · Dialogue</span><ChevronDown className="size-3.5" />
+        </button>
+      </StageSection>
+      <StageSection title="Language">
+        <button className="w-full h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>English (US)</span><ChevronDown className="size-3.5" />
+        </button>
+      </StageSection>
+      <SliderRow label="Max characters" value="22" v={22} onChange={() => {}} min={5} max={40} />
+      <StageSection title="Style">
+        <SegRow value={style} onChange={setStyle} options={[
+          { id: "single", label: "Single word" }, { id: "double", label: "Double line" },
+        ]} />
+      </StageSection>
+      <button className="w-full h-11 rounded-full bg-primary text-on-primary text-[11px] font-mono font-semibold tracking-wider">GENERATE</button>
+    </div>
+  );
+}
+
+function CanvasStage() {
+  const [ar, setAr] = useState<"v" | "s" | "h">("v");
+  const [fill, setFill] = useState<"blur" | "solid">("blur");
+  return (
+    <div className="space-y-3">
+      <StageSection title="Aspect ratio">
+        <SegRow value={ar} onChange={setAr} options={[
+          { id: "v", label: "9:16" }, { id: "s", label: "1:1" }, { id: "h", label: "16:9" },
+        ]} />
+      </StageSection>
+      <StageSection title="Empty border fill">
+        <SegRow value={fill} onChange={setFill} options={[
+          { id: "blur", label: "Gaussian" }, { id: "solid", label: "Solid black" },
+        ]} />
+      </StageSection>
+      <div className="grid grid-cols-2 gap-1.5">
+        <button className="h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>24 fps</span><ChevronDown className="size-3.5" />
+        </button>
+        <button className="h-10 rounded-xl glass px-3 flex items-center justify-between text-[11px] font-medium text-primary">
+          <span>Fit</span><ChevronDown className="size-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MaskPrecisionStage() {
+  const [shape, setShape] = useState<"rect" | "ellipse" | "pen">("rect");
+  return (
+    <div className="space-y-3">
+      <StageSection title="Shape">
+        <SegRow value={shape} onChange={setShape} options={[
+          { id: "rect", label: "Rect", icon: Square },
+          { id: "ellipse", label: "Ellipse", icon: CircleIcon },
+          { id: "pen", label: "Pen", icon: PenTool },
+        ]} />
+      </StageSection>
+      <SliderRow label="Feathering" value="35 px" v={35} onChange={() => {}} min={0} max={100} />
+      <SliderRow label="Expansion" value="0 px" v={50} onChange={() => {}} min={0} max={100} />
+    </div>
+  );
+}
+
 
 function AgentChat() {
   const [text, setText] = useState("");
